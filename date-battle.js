@@ -958,7 +958,7 @@
       };
       
       await roche.storage.set("date_battle_last_config", config);
-      showLoading("正在同步多角色人设并构建开局修罗场描述...");
+      showLoading("正在构建开局...");
 
       let userPersona = null;
       let selectedCharacters = [];
