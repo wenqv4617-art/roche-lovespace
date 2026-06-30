@@ -461,7 +461,6 @@
   function showCustomConfirm(container, title, message, onConfirm) {
     const root = container.querySelector(".roche-plugin-date-battle") || container;
     
-    // 如果已经存在弹窗，先移除
     const exist = root.querySelector(".db-modal-overlay");
     if (exist) exist.remove();
 
@@ -500,7 +499,169 @@
     if (overlay) overlay.style.display = "none";
   }
 
-  // 4. 路由逻辑：Tab 切换与视图渲染
+  function escapeHtml(str) {
+    return str
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+  }
+
+  // 历史消息流渲染
+  function renderHistory(chatContainer, history, charName, userName) {
+    const displayHistory = history.filter((msg, idx) => {
+      return !(idx === 0 && msg.role === "user" && msg.content.includes("第一回合"));
+    });
+
+    chatContainer.innerHTML = displayHistory.map(msg => {
+      const isUser = msg.role === "user";
+      const sender = isUser ? userName : charName;
+      const bubbleClass = isUser ? "user" : "char";
+      return `
+        <div class="msg-wrapper ${bubbleClass}">
+          <div class="msg-sender">${sender}</div>
+          <div class="msg-bubble">${escapeHtml(msg.content)}</div>
+        </div>
+      `;
+    }).join("");
+
+    chatContainer.scrollTop = chatContainer.scrollHeight;
+  }
+
+  // 渲染游戏核心界面
+  function renderGameView(container, roche, config, history, systemPrompt, character, userPersona, sessionId) {
+    switchView(container, roche, "game");
+    const gameDiv = document.getElementById("db-game-view");
+
+    const userName = userPersona.handle || userPersona.name || "你";
+    const charName = character.handle || character.name || "对手";
+
+    gameDiv.innerHTML = `
+      <div class="game-header">
+        <div class="game-header-title">与 ${escapeHtml(charName)} 的冒险 [字数要求: ${config.wordMin}-${config.wordMax}]</div>
+        <div class="game-header-actions">
+          <button class="db-btn db-btn-sec db-btn-sm" id="db-game-back">
+            ${SVGS.back} 返回大厅
+          </button>
+          <button class="db-btn db-btn-sec db-btn-sm" id="db-game-reset">
+            ${SVGS.reset} 重置本局
+          </button>
+          <button class="db-btn db-btn-sec db-btn-sm" id="db-game-close">
+            ${SVGS.logout} 退出
+          </button>
+        </div>
+      </div>
+      
+      <div class="chat-container" id="db-chat-container"></div>
+      
+      <div class="input-area">
+        <textarea id="db-input-text" placeholder="输入你想做出的自由动作与台词描述（按 Ctrl+Enter 行动）..."></textarea>
+        <button class="send-btn" id="db-send-btn">发送</button>
+      </div>
+    `;
+
+    const chatContainer = document.getElementById("db-chat-container");
+    renderHistory(chatContainer, history, charName, userName);
+
+    document.getElementById("db-game-back").onclick = () => {
+      switchView(container, roche, "list");
+    };
+
+    document.getElementById("db-game-close").onclick = () => roche.ui.closeApp();
+
+    document.getElementById("db-game-reset").onclick = () => {
+      showCustomConfirm(container, "重置本副本", "确定要清空本副本的聊天记录重新开始吗？副本配置不会丢失。", async () => {
+        try {
+          showLoading("正在重新描摹开场舞台...");
+          const openingPrompt = "请开启《约会大作战》的第一回合。作为主持人和对手，描述我们当前所处的具体场景、你的出场状态、并向我（玩家）打个招呼作为开端，等待我的第一步自由行动。";
+          const result = await roche.ai.chat({
+            messages: [
+              { role: "system", content: systemPrompt },
+              { role: "user", content: openingPrompt }
+            ]
+          });
+          const initialReply = result && (result.text || result.content);
+          if (!initialReply) throw new Error("AI 反应为空，请重试");
+
+          const newHistory = [
+            { role: "user", content: openingPrompt },
+            { role: "assistant", content: initialReply }
+          ];
+
+          await roche.storage.set(`db_session_history_${sessionId}`, newHistory);
+          hideLoading();
+          renderGameView(container, roche, config, newHistory, systemPrompt, character, userPersona, sessionId);
+        } catch (err) {
+          hideLoading();
+          roche.ui.toast("重置失败: " + err.message);
+        }
+      });
+    };
+
+    const sendBtn = document.getElementById("db-send-btn");
+    const textarea = document.getElementById("db-input-text");
+
+    const performAction = async () => {
+      const text = textarea.value.trim();
+      if (!text) return;
+
+      textarea.disabled = true;
+      sendBtn.disabled = true;
+      showLoading("对方正在组织下一步动作...");
+
+      history.push({ role: "user", content: text });
+      renderHistory(chatContainer, history, charName, userName);
+      textarea.value = "";
+
+      await roche.storage.set(`db_session_history_${sessionId}`, history);
+
+      let sessions = await roche.storage.get("date_battle_sessions") || [];
+      const currentIdx = sessions.findIndex(s => s.id === sessionId);
+      if (currentIdx !== -1) {
+        sessions[currentIdx].createdAt = Date.now();
+        await roche.storage.set("date_battle_sessions", sessions);
+      }
+
+      try {
+        const result = await roche.ai.chat({
+          messages: [
+            { role: "system", content: systemPrompt },
+            ...history
+          ]
+        });
+
+        const replyContent = result && (result.text || result.content);
+        if (!replyContent) throw new Error("服务未回复有效对话");
+
+        history.push({ role: "assistant", content: replyContent });
+        await roche.storage.set(`db_session_history_${sessionId}`, history);
+
+        renderHistory(chatContainer, history, charName, userName);
+      } catch(e) {
+        console.error(e);
+        roche.ui.toast("AI 沟通中断，原因：" + (e.message || "未知") + "。数据已在本地保存，您可以重试。");
+        history.pop();
+        await roche.storage.set(`db_session_history_${sessionId}`, history);
+        renderHistory(chatContainer, history, charName, userName);
+      } finally {
+        textarea.disabled = false;
+        sendBtn.disabled = false;
+        hideLoading();
+        textarea.focus();
+      }
+    };
+
+    sendBtn.onclick = performAction;
+    textarea.onkeydown = (e) => {
+      if (e.key === 'Enter' && e.ctrlKey) {
+        e.preventDefault();
+        performAction();
+      }
+    };
+  }
+
+  // 路由器逻辑
   async function switchView(container, roche, viewName) {
     const setupView = document.getElementById("db-setup-view");
     const gameView = document.getElementById("db-game-view");
@@ -525,7 +686,255 @@
     }
   }
 
-  // 5. 渲染：配置表单视图
+  // 新建副本流程
+  async function createNewGame(container, roche) {
+    try {
+      const userEl = document.getElementById("db-user-select");
+      const charEl = document.getElementById("db-char-select");
+      if (!userEl || !charEl) throw new Error("页面载入异常，请刷新重试");
+
+      const userId = userEl.value;
+      const charId = charEl.value;
+      const worldType = document.getElementById("db-world-type").value.trim() || "现代校园";
+      const wordMin = parseInt(document.getElementById("db-word-min").value, 10) || 150;
+      const wordMax = parseInt(document.getElementById("db-word-max").value, 10) || 350;
+      const worldIntro = document.getElementById("db-world-intro").value.trim();
+      const userBg = document.getElementById("db-user-bg").value.trim();
+      const charBg = document.getElementById("db-char-bg").value.trim();
+
+      const selectedWbElements = document.querySelectorAll('input[name="db-wb-category"]:checked');
+      const selectedWbs = Array.from(selectedWbElements).map(el => el.value);
+
+      if (wordMin >= wordMax) {
+        roche.ui.toast("单回合字数下限不能大于或等于上限！");
+        return;
+      }
+
+      const config = { userId, charId, worldType, wordMin, wordMax, worldIntro, userBg, charBg, worldbooks: selectedWbs };
+      
+      await roche.storage.set("date_battle_last_config", config);
+      showLoading("正在同步系统人设并构建开局舞台描述...");
+
+      let userPersona = null;
+      let character = null;
+      try {
+        const users = await roche.persona.getUserPersonas() || [];
+        userPersona = users.find(u => u.id === userId);
+        if (roche.character && typeof roche.character.get === 'function') {
+          character = await roche.character.get(charId);
+        } else {
+          const chars = await roche.character.list() || [];
+          character = chars.find(c => c.id === charId);
+        }
+      } catch (e) {
+        console.warn("加载核心人物报错，尝试降级", e);
+        const chars = await roche.character.list() || [];
+        character = chars.find(c => c.id === charId);
+      }
+
+      if (!userPersona || !character) {
+        throw new Error("加载人物数据失败，请确保宿主已预设角色和人设");
+      }
+
+      let worldbookText = "";
+      if (selectedWbs.length > 0) {
+        for (const catId of selectedWbs) {
+          try {
+            const entries = await roche.worldbook.getEntries({ categoryId: catId });
+            if (entries && entries.length > 0) {
+              worldbookText += `\n【世界书分类 - ${catId}】:\n` + entries.map(e => `- ${e.key || e.name}: ${e.content || e.value || ""}`).join("\n");
+            }
+          } catch(e) {
+            console.error(`世界书获取异常: ${catId}`, e);
+          }
+        }
+      }
+
+      const userName = userPersona.handle || userPersona.name || "玩家";
+      const charName = character.handle || character.name || "角色";
+
+      const systemPrompt = `
+你是一个优秀的 TRPG 主持人（GM）兼角色扮演者。当前正在进行一场名为《约会大作战》的回合制文字恋爱冒险游戏。
+
+【世界设定】
+世界类型/画风: ${worldType}
+场景起因与背景介绍: ${worldIntro || "一次偶然的邂逅"}
+${worldbookText ? `\n【引入参考世界书设定数据】\n${worldbookText}` : ''}
+
+【玩家信息 (User)】
+姓名/昵称: ${userName}
+玩家身份背景: ${userBg || "普通参与者"}
+完整人设性格参考: ${userPersona.persona || userPersona.bio || "无"}
+
+【对手角色信息 (Character)】
+姓名/昵称: ${charName}
+对手身份背景: ${charBg || "攻略对象"}
+完整人设性格参考: ${character.persona || character.bio || "无"}
+
+【游戏核心规则】
+1. 这是一场回合制互动。你负责扮演对手角色（${charName}）以及周围的世界环境（作为GM）。
+2. 你的每一次回复必须高度符合该角色的性格特色、言行习惯，并切合当前的世界画风。
+3. 你的每一回合回复文本长度（包含对白与描述）必须严格限制在 [${wordMin}] 字 到 [${wordMax}] 字 的区间内，不得太短，也不得超限。
+4. 在回复中：你需要描述对方角色的动作、对话和心理活动，同时描绘环境的变化，最后留出空间等待玩家（User）采取下一步行动。
+5. 绝不要替玩家（User）做出任何选择或擅自说出玩家的台词。
+6. 保持绝对的角色沉浸，严禁跳戏，严禁提及你是AI或这只是程序。
+`;
+
+      const openingPrompt = "请开启《约会大作战》的第一回合。作为主持人和对手，描述我们当前所处的具体场景、你的出场状态、并向我（玩家）打个招呼作为开端，等待我的第一步自由行动。";
+      let initialReply = "";
+      try {
+        const result = await roche.ai.chat({
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: openingPrompt }
+          ]
+        });
+        initialReply = result && (result.text || result.content);
+        if (!initialReply) throw new Error("AI 返回了空数据，请检查服务商及网络配置");
+      } catch (aiErr) {
+        throw new Error("AI 初始化世界失败: " + (aiErr.message || "请求超时"));
+      }
+
+      const sessionId = "sess_" + Date.now().toString(36) + Math.random().toString(36).substr(2, 4);
+      const history = [
+        { role: "user", content: openingPrompt },
+        { role: "assistant", content: initialReply }
+      ];
+
+      const newSessionMeta = {
+        id: sessionId,
+        name: `与 ${charName} 的约会大作战`,
+        worldType,
+        characterName: charName,
+        userName,
+        createdAt: Date.now()
+      };
+
+      let sessions = await roche.storage.get("date_battle_sessions") || [];
+      sessions.unshift(newSessionMeta);
+      await roche.storage.set("date_battle_sessions", sessions);
+
+      await roche.storage.set(`db_session_config_${sessionId}`, config);
+      await roche.storage.set(`db_session_history_${sessionId}`, history);
+      await roche.storage.set("date_battle_current_session_id", sessionId);
+
+      hideLoading();
+      renderGameView(container, roche, config, history, systemPrompt, character, userPersona, sessionId);
+
+    } catch (fatalError) {
+      hideLoading();
+      console.error(fatalError);
+      roche.ui.toast("创建大作战副本失败: " + fatalError.message);
+    }
+  }
+
+  // 恢复（加载）已有副本
+  async function resumeGame(container, roche, sessionId) {
+    showLoading("正在读取副本进度及世界设定...");
+    try {
+      const config = await roche.storage.get(`db_session_config_${sessionId}`);
+      const history = await roche.storage.get(`db_session_history_${sessionId}`);
+
+      if (!config || !history) throw new Error("该副本数据已损坏或不存在");
+
+      let userPersona = null;
+      let character = null;
+
+      try {
+        const users = await roche.persona.getUserPersonas() || [];
+        userPersona = users.find(u => u.id === config.userId);
+        if (roche.character && typeof roche.character.get === 'function') {
+          character = await roche.character.get(config.charId);
+        } else {
+          const chars = await roche.character.list() || [];
+          character = chars.find(c => c.id === config.charId);
+        }
+      } catch (e) {
+        const chars = await roche.character.list() || [];
+        character = chars.find(c => c.id === config.charId);
+      }
+
+      if (!userPersona || !character) {
+        throw new Error("人设或角色未找到，可能已被宿主系统移除");
+      }
+
+      let worldbookText = "";
+      if (config.worldbooks && config.worldbooks.length > 0) {
+        for (const catId of config.worldbooks) {
+          try {
+            const entries = await roche.worldbook.getEntries({ categoryId: catId });
+            if (entries && entries.length > 0) {
+              worldbookText += `\n【世界书分类 - ${catId}】:\n` + entries.map(e => `- ${e.key || e.name}: ${e.content || e.value || ""}`).join("\n");
+            }
+          } catch(e) {
+            console.error(e);
+          }
+        }
+      }
+
+      const userName = userPersona.handle || userPersona.name || "玩家";
+      const charName = character.handle || character.name || "角色";
+
+      const systemPrompt = `
+你是一个优秀的 TRPG 主持人（GM）兼角色扮演者。当前正在进行一场名为《约会大作战》的回合制文字恋爱冒险游戏。
+
+【世界设定】
+世界类型/画风: ${config.worldType}
+场景起因与背景介绍: ${config.worldIntro || "一次偶然的邂逅"}
+${worldbookText ? `\n【引入参考世界书设定数据】\n${worldbookText}` : ''}
+
+【玩家信息 (User)】
+姓名/昵称: ${userName}
+玩家身份背景: ${config.userBg || "普通参与者"}
+完整人设性格参考: ${userPersona.persona || userPersona.bio || "无"}
+
+【对手角色信息 (Character)】
+姓名/昵称: ${charName}
+对手身份背景: ${config.charBg || "攻略对象"}
+完整人设性格参考: ${character.persona || character.bio || "无"}
+
+【游戏核心规则】
+1. 这是一场回合制互动。你负责扮演对手角色（${charName}）以及周围的世界环境（作为GM）。
+2. 你的每一次回复必须高度符合该角色的性格特色、言行习惯，并切合当前的世界画风。
+3. 你的每一回合回复文本长度（包含对白与描述）必须严格限制在 [${config.wordMin}] 字 到 [${config.wordMax}] 字 的区间内，不得太短，也不得超限。
+4. 在回复中：你需要描述对方角色的动作、对话和心理活动，同时描绘环境的变化，最后留出空间等待玩家（User）采取下一步行动。
+5. 绝不要替玩家（User）做出任何选择或擅自说出玩家的台词。
+6. 保持绝对的角色沉浸，严禁跳戏，严禁提及你是AI或这只是程序。
+`;
+
+      await roche.storage.set("date_battle_current_session_id", sessionId);
+      hideLoading();
+      renderGameView(container, roche, config, history, systemPrompt, character, userPersona, sessionId);
+
+    } catch (e) {
+      hideLoading();
+      roche.ui.toast("读取副本失败: " + e.message);
+    }
+  }
+
+  // 删除特定副本
+  async function deleteSession(container, roche, sessionId) {
+    try {
+      let sessions = await roche.storage.get("date_battle_sessions") || [];
+      sessions = sessions.filter(s => s.id !== sessionId);
+      await roche.storage.set("date_battle_sessions", sessions);
+
+      await roche.storage.delete(`db_session_config_${sessionId}`);
+      await roche.storage.delete(`db_session_history_${sessionId}`);
+
+      const current = await roche.storage.get("date_battle_current_session_id");
+      if (current === sessionId) {
+        await roche.storage.delete("date_battle_current_session_id");
+      }
+
+      roche.ui.toast("副本已成功删除。");
+      await renderSessionList(container, roche);
+    } catch(e) {
+      roche.ui.toast("删除失败: " + e.message);
+    }
+  }
+
+  // 渲染配置表单
   async function renderSetupForm(container, roche) {
     const setupDiv = document.getElementById("db-setup-view");
     showLoading("加载人设与设定数据...");
@@ -644,7 +1053,7 @@
     };
   }
 
-  // 6. 渲染：我的副本（多存档）管理中心
+  // 渲染我的副本列表
   async function renderSessionList(container, roche) {
     const setupDiv = document.getElementById("db-setup-view");
     showLoading("加载副本列表中...");
@@ -696,7 +1105,6 @@
       </div>
     `;
 
-    // 绑定继续/删除的操作监听器
     setupDiv.querySelectorAll('[data-action="resume"]').forEach(btn => {
       btn.onclick = async () => {
         const id = btn.getAttribute("data-id");
@@ -711,402 +1119,10 @@
           await deleteSession(container, roche, id);
         });
       };
-    };
+    }); // 修复了这里的 }); 语法错误
   }
 
-  // 7. 新建副本流程
-  async function createNewGame(container, roche) {
-    try {
-      const userEl = document.getElementById("db-user-select");
-      const charEl = document.getElementById("db-char-select");
-      if (!userEl || !charEl) throw new Error("页面载入异常，请刷新重试");
-
-      const userId = userEl.value;
-      const charId = charEl.value;
-      const worldType = document.getElementById("db-world-type").value.trim() || "现代校园";
-      const wordMin = parseInt(document.getElementById("db-word-min").value, 10) || 150;
-      const wordMax = parseInt(document.getElementById("db-word-max").value, 10) || 350;
-      const worldIntro = document.getElementById("db-world-intro").value.trim();
-      const userBg = document.getElementById("db-user-bg").value.trim();
-      const charBg = document.getElementById("db-char-bg").value.trim();
-
-      const selectedWbElements = document.querySelectorAll('input[name="db-wb-category"]:checked');
-      const selectedWbs = Array.from(selectedWbElements).map(el => el.value);
-
-      if (wordMin >= wordMax) {
-        roche.ui.toast("单回合字数下限不能大于或等于上限！");
-        return;
-      }
-
-      const config = { userId, charId, worldType, wordMin, wordMax, worldIntro, userBg, charBg, worldbooks: selectedWbs };
-      
-      // 记住上一次填写的偏好
-      await roche.storage.set("date_battle_last_config", config);
-
-      showLoading("正在同步系统人设并构建开局舞台描述...");
-
-      // 获取 User 和 Char
-      let userPersona = null;
-      let character = null;
-      try {
-        const users = await roche.persona.getUserPersonas() || [];
-        userPersona = users.find(u => u.id === userId);
-        if (roche.character && typeof roche.character.get === 'function') {
-          character = await roche.character.get(charId);
-        } else {
-          const chars = await roche.character.list() || [];
-          character = chars.find(c => c.id === charId);
-        }
-      } catch (e) {
-        console.warn("加载核心人物报错，尝试降级", e);
-        const chars = await roche.character.list() || [];
-        character = chars.find(c => c.id === charId);
-      }
-
-      if (!userPersona || !character) {
-        throw new Error("加载人物数据失败，请确保宿主已预设角色和人设");
-      }
-
-      // 获取选定世界书
-      let worldbookText = "";
-      if (selectedWbs.length > 0) {
-        for (const catId of selectedWbs) {
-          try {
-            const entries = await roche.worldbook.getEntries({ categoryId: catId });
-            if (entries && entries.length > 0) {
-              worldbookText += `\n【世界书分类 - ${catId}】:\n` + entries.map(e => `- ${e.key || e.name}: ${e.content || e.value || ""}`).join("\n");
-            }
-          } catch(e) {
-            console.error(`世界书获取异常: ${catId}`, e);
-          }
-        }
-      }
-
-      const userName = userPersona.handle || userPersona.name || "玩家";
-      const charName = character.handle || character.name || "角色";
-
-      // 组装系统提示词（带有字数控制区间）
-      const systemPrompt = `
-你是一个优秀的 TRPG 主持人（GM）兼角色扮演者。当前正在进行一场名为《约会大作战》的回合制文字恋爱冒险游戏。
-
-【世界设定】
-世界类型/画风: ${worldType}
-场景起因与背景介绍: ${worldIntro || "一次偶然的邂逅"}
-${worldbookText ? `\n【引入参考世界书设定数据】\n${worldbookText}` : ''}
-
-【玩家信息 (User)】
-姓名/昵称: ${userName}
-玩家身份背景: ${userBg || "普通参与者"}
-完整人设性格参考: ${userPersona.persona || userPersona.bio || "无"}
-
-【对手角色信息 (Character)】
-姓名/昵称: ${charName}
-对手身份背景: ${charBg || "攻略对象"}
-完整人设性格参考: ${character.persona || character.bio || "无"}
-
-【游戏核心规则】
-1. 这是一场回合制互动。你负责扮演对手角色（${charName}）以及周围的世界环境（作为GM）。
-2. 你的每一次回复必须高度符合该角色的性格特色、言行习惯，并切合当前的世界画风。
-3. 你的每一回合回复文本长度（包含对白与描述）必须严格控制在 [${wordMin}] 字 到 [${wordMax}] 字 的区间内，不得太短，也不得超限。
-4. 在回复中：你需要描述对方角色的动作、对话和心理活动，同时描绘环境的变化，最后留出空间等待玩家（User）采取下一步行动。
-5. 绝不要替玩家（User）做出任何选择或擅自说出玩家的台词。
-6. 保持绝对的角色沉浸，严禁跳戏，严禁提及你是AI或这只是程序。
-`;
-
-      const openingPrompt = "请开启《约会大作战》的第一回合。作为主持人和对手，描述我们当前所处的具体场景、你的出场状态、并向我（玩家）打个招呼作为开端，等待我的第一步自由行动。";
-      let initialReply = "";
-      try {
-        const result = await roche.ai.chat({
-          messages: [
-            { role: "system", content: systemPrompt },
-            { role: "user", content: openingPrompt }
-          ]
-        });
-        initialReply = result && (result.text || result.content);
-        if (!initialReply) throw new Error("AI 返回了空数据，请检查服务商及网络配置");
-      } catch (aiErr) {
-        throw new Error("AI 初始化世界失败: " + (aiErr.message || "请求超时"));
-      }
-
-      // 生成全新副本（存档）
-      const sessionId = "sess_" + Date.now().toString(36) + Math.random().toString(36).substr(2, 4);
-      const history = [
-        { role: "user", content: openingPrompt },
-        { role: "assistant", content: initialReply }
-      ];
-
-      const newSessionMeta = {
-        id: sessionId,
-        name: `与 ${charName} 的约会大作战`,
-        worldType,
-        characterName: charName,
-        userName,
-        createdAt: Date.now()
-      };
-
-      // 写入存储
-      let sessions = await roche.storage.get("date_battle_sessions") || [];
-      sessions.unshift(newSessionMeta);
-      await roche.storage.set("date_battle_sessions", sessions);
-
-      await roche.storage.set(`db_session_config_${sessionId}`, config);
-      await roche.storage.set(`db_session_history_${sessionId}`, history);
-      await roche.storage.set("date_battle_current_session_id", sessionId);
-
-      hideLoading();
-      
-      // 启动游戏主场景
-      renderGameView(container, roche, config, history, systemPrompt, character, userPersona, sessionId);
-
-    } catch (fatalError) {
-      hideLoading();
-      console.error(fatalError);
-      roche.ui.toast("创建大作战副本失败: " + fatalError.message);
-    }
-  }
-
-  // 8. 恢复（加载）已有副本流程
-  async function resumeGame(container, roche, sessionId) {
-    showLoading("正在读取副本进度及世界设定...");
-    try {
-      const config = await roche.storage.get(`db_session_config_${sessionId}`);
-      const history = await roche.storage.get(`db_session_history_${sessionId}`);
-
-      if (!config || !history) throw new Error("该副本数据已损坏或不存在");
-
-      let userPersona = null;
-      let character = null;
-
-      try {
-        const users = await roche.persona.getUserPersonas() || [];
-        userPersona = users.find(u => u.id === config.userId);
-        if (roche.character && typeof roche.character.get === 'function') {
-          character = await roche.character.get(config.charId);
-        } else {
-          const chars = await roche.character.list() || [];
-          character = chars.find(c => c.id === config.charId);
-        }
-      } catch (e) {
-        const chars = await roche.character.list() || [];
-        character = chars.find(c => c.id === config.charId);
-      }
-
-      if (!userPersona || !character) {
-        throw new Error("人设或角色未找到，可能已被宿主系统移除");
-      }
-
-      let worldbookText = "";
-      if (config.worldbooks && config.worldbooks.length > 0) {
-        for (const catId of config.worldbooks) {
-          try {
-            const entries = await roche.worldbook.getEntries({ categoryId: catId });
-            if (entries && entries.length > 0) {
-              worldbookText += `\n【世界书分类 - ${catId}】:\n` + entries.map(e => `- ${e.key || e.name}: ${e.content || e.value || ""}`).join("\n");
-            }
-          } catch(e) {
-            console.error(e);
-          }
-        }
-      }
-
-      const userName = userPersona.handle || userPersona.name || "玩家";
-      const charName = character.handle || character.name || "角色";
-
-      const systemPrompt = `
-你是一个优秀的 TRPG 主持人（GM）兼角色扮演者。当前正在进行一场名为《约会大作战》的回合制文字恋爱冒险游戏。
-
-【世界设定】
-世界类型/画风: ${config.worldType}
-场景起因与背景介绍: ${config.worldIntro || "一次偶然的邂逅"}
-${worldbookText ? `\n【引入参考世界书设定数据】\n${worldbookText}` : ''}
-
-【玩家信息 (User)】
-姓名/昵称: ${userName}
-玩家身份背景: ${config.userBg || "普通参与者"}
-完整人设性格参考: ${userPersona.persona || userPersona.bio || "无"}
-
-【对手角色信息 (Character)】
-姓名/昵称: ${charName}
-对手身份背景: ${config.charBg || "攻略对象"}
-完整人设性格参考: ${character.persona || character.bio || "无"}
-
-【游戏核心规则】
-1. 这是一场回合制互动。你负责扮演对手角色（${charName}）以及周围的世界环境（作为GM）。
-2. 你的每一次回复必须高度符合该角色的性格特色、言行习惯，并切合当前的世界画风。
-3. 你的每一回合回复文本长度（包含对白与描述）必须严格限制在 [${config.wordMin}] 字 到 [${config.wordMax}] 字 的区间内，不得太短，也不得超限。
-4. 在回复中：你需要描述对方角色的动作、对话和心理活动，同时描绘环境的变化，最后留出空间等待玩家（User）采取下一步行动。
-5. 绝不要替玩家（User）做出任何选择或擅自说出玩家的台词。
-6. 保持绝对的角色沉浸，严禁跳戏，严禁提及你是AI或这只是程序。
-`;
-
-      await roche.storage.set("date_battle_current_session_id", sessionId);
-      hideLoading();
-      renderGameView(container, roche, config, history, systemPrompt, character, userPersona, sessionId);
-
-    } catch (e) {
-      hideLoading();
-      roche.ui.toast("读取副本失败: " + e.message);
-    }
-  }
-
-  // 9. 删除特定副本流程
-  async function deleteSession(container, roche, sessionId) {
-    try {
-      let sessions = await roche.storage.get("date_battle_sessions") || [];
-      sessions = sessions.filter(s => s.id !== sessionId);
-      await roche.storage.set("date_battle_sessions", sessions);
-
-      // 清理对应的具体数据
-      await roche.storage.delete(`db_session_config_${sessionId}`);
-      await roche.storage.delete(`db_session_history_${sessionId}`);
-
-      const current = await roche.storage.get("date_battle_current_session_id");
-      if (current === sessionId) {
-        await roche.storage.delete("date_battle_current_session_id");
-      }
-
-      roche.ui.toast("副本已成功删除。");
-      await renderSessionList(container, roche);
-    } catch(e) {
-      roche.ui.toast("删除失败: " + e.message);
-    }
-  }
-
-  // 10. 渲染：游戏会话窗口逻辑（纯文本自由输入演绎 + 每轮自动备份）
-  function renderGameView(container, roche, config, history, systemPrompt, character, userPersona, sessionId) {
-    switchView(container, roche, "game");
-    const gameDiv = document.getElementById("db-game-view");
-
-    const userName = userPersona.handle || userPersona.name || "你";
-    const charName = character.handle || character.name || "对手";
-
-    gameDiv.innerHTML = `
-      <div class="game-header">
-        <div class="game-header-title">与 ${escapeHtml(charName)} 的冒险 [字数要求: ${config.wordMin}-${config.wordMax}]</div>
-        <div class="game-header-actions">
-          <button class="db-btn db-btn-sec db-btn-sm" id="db-game-back">
-            ${SVGS.back} 返回大厅
-          </button>
-          <button class="db-btn db-btn-sec db-btn-sm" id="db-game-reset">
-            ${SVGS.reset} 重置本局
-          </button>
-          <button class="db-btn db-btn-sec db-btn-sm" id="db-game-close">
-            ${SVGS.logout} 退出
-          </button>
-        </div>
-      </div>
-      
-      <div class="chat-container" id="db-chat-container"></div>
-      
-      <div class="input-area">
-        <textarea id="db-input-text" placeholder="输入你想做出的自由动作与台词描述（按 Ctrl+Enter 行动）..."></textarea>
-        <button class="send-btn" id="db-send-btn">发送</button>
-      </div>
-    `;
-
-    const chatContainer = document.getElementById("db-chat-container");
-    renderHistory(chatContainer, history, charName, userName);
-
-    document.getElementById("db-game-back").onclick = () => {
-      switchView(container, roche, "list");
-    };
-
-    document.getElementById("db-game-close").onclick = () => roche.ui.closeApp();
-
-    document.getElementById("db-game-reset").onclick = () => {
-      showCustomConfirm(container, "重置本副本", "确定要清空本副本的聊天记录重新开始吗？副本配置不会丢失。", async () => {
-        try {
-          showLoading("正在重新描摹开场舞台...");
-          const openingPrompt = "请开启《约会大作战》的第一回合。作为主持人和对手，描述我们当前所处的具体场景、你的出场状态、并向我（玩家）打个招呼作为开端，等待我的第一步自由行动。";
-          const result = await roche.ai.chat({
-            messages: [
-              { role: "system", content: systemPrompt },
-              { role: "user", content: openingPrompt }
-            ]
-          });
-          const initialReply = result && (result.text || result.content);
-          if (!initialReply) throw new Error("AI 反应为空，请重试");
-
-          const newHistory = [
-            { role: "user", content: openingPrompt },
-            { role: "assistant", content: initialReply }
-          ];
-
-          await roche.storage.set(`db_session_history_${sessionId}`, newHistory);
-          hideLoading();
-          renderGameView(container, roche, config, newHistory, systemPrompt, character, userPersona, sessionId);
-        } catch (err) {
-          hideLoading();
-          roche.ui.toast("重置失败: " + err.message);
-        }
-      });
-    };
-
-    const sendBtn = document.getElementById("db-send-btn");
-    const textarea = document.getElementById("db-input-text");
-
-    const performAction = async () => {
-      const text = textarea.value.trim();
-      if (!text) return;
-
-      textarea.disabled = true;
-      sendBtn.disabled = true;
-      showLoading("对方正在组织下一步动作...");
-
-      history.push({ role: "user", content: text });
-      renderHistory(chatContainer, history, charName, userName);
-      textarea.value = "";
-
-      // 及时写入数据库防意外中断
-      await roche.storage.set(`db_session_history_${sessionId}`, history);
-
-      // 同步更新我的副本外显列表时间
-      let sessions = await roche.storage.get("date_battle_sessions") || [];
-      const currentIdx = sessions.findIndex(s => s.id === sessionId);
-      if (currentIdx !== -1) {
-        sessions[currentIdx].createdAt = Date.now();
-        await roche.storage.set("date_battle_sessions", sessions);
-      }
-
-      try {
-        const result = await roche.ai.chat({
-          messages: [
-            { role: "system", content: systemPrompt },
-            ...history
-          ]
-        });
-
-        const replyContent = result && (result.text || result.content);
-        if (!replyContent) throw new Error("服务未回复有效对话");
-
-        history.push({ role: "assistant", content: replyContent });
-        await roche.storage.set(`db_session_history_${sessionId}`, history);
-
-        renderHistory(chatContainer, history, charName, userName);
-      } catch(e) {
-        console.error(e);
-        roche.ui.toast("AI 沟通中断，原因：" + (e.message || "未知") + "。数据已在本地保存，您可以重试。");
-        history.pop();
-        await roche.storage.set(`db_session_history_${sessionId}`, history);
-        renderHistory(chatContainer, history, charName, userName);
-      } finally {
-        textarea.disabled = false;
-        sendBtn.disabled = false;
-        hideLoading();
-        textarea.focus();
-      }
-    };
-
-    sendBtn.onclick = performAction;
-    textarea.onkeydown = (e) => {
-      if (e.key === 'Enter' && e.ctrlKey) {
-        e.preventDefault();
-        performAction();
-      }
-    };
-  }
-
-  // 11. 主程序注册
+  // 主程序注册
   window.RochePlugin.register({
     id: "date-battle",
     name: "约会大作战",
@@ -1121,7 +1137,6 @@ ${worldbookText ? `\n【引入参考世界书设定数据】\n${worldbookText}` 
           injectStyles();
           container.innerHTML = `
             <div class="roche-plugin-date-battle">
-              <!-- 统一质感导航栏 -->
               <div class="db-navbar">
                 <div class="db-navbar-brand">
                   ${SVGS.heart} 约会大作战
@@ -1132,11 +1147,9 @@ ${worldbookText ? `\n【引入参考世界书设定数据】\n${worldbookText}` 
                 </div>
               </div>
 
-              <!-- 主视图视图层 -->
               <div id="db-setup-view" class="db-view"></div>
               <div id="db-game-view" class="db-view" style="display: none;"></div>
               
-              <!-- 全局轻盈 Loading 覆盖层 -->
               <div id="db-loading-overlay" class="db-overlay" style="display: none;">
                 <div class="db-spinner"></div>
                 <div id="db-loading-text">正在初始化世界...</div>
@@ -1144,7 +1157,6 @@ ${worldbookText ? `\n【引入参考世界书设定数据】\n${worldbookText}` 
             </div>
           `;
 
-          // 配置 Tab 切换触发器
           document.getElementById("db-nav-new-btn").onclick = async () => {
             await switchView(container, roche, "setup");
           };
@@ -1152,7 +1164,6 @@ ${worldbookText ? `\n【引入参考世界书设定数据】\n${worldbookText}` 
             await switchView(container, roche, "list");
           };
 
-          // 缺省检测：如果有活跃的游戏副本未完结，直接进入游戏；否则默认显示新建
           const lastActiveSess = await roche.storage.get("date_battle_current_session_id");
           if (lastActiveSess) {
             try {
