@@ -1,0 +1,17 @@
+{
+  "id": "date-battle",
+  "name": "约会大作战",
+  "version": "1.0.0",
+  "description": "自定义世界观，自选User人设与Character角色，开启独属于你们的回合制恋爱文字冒险旅程！",
+  "author": "wenqv4617-art",
+  "entry": "https://raw.githubusercontent.com/wenqv4617-art/roche-lovespace/main/date-battle.js",
+  "hash": "",
+  "permissions": [
+    "persona:read",
+    "character:read",
+    "worldbook:read",
+    "ai:chat",
+    "storage",
+    "ui"
+  ]
+}
