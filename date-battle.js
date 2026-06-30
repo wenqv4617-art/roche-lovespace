@@ -1,23 +1,27 @@
 (function() {
   const STYLE_ID = "roche-plugin-date-battle-styles";
 
-  // 1. 独立辅助函数
+  // 1. 样式表重构（茱萸粉、白皙、雅灰等高质感浅色组合）
   function injectStyles() {
     if (document.getElementById(STYLE_ID)) return;
     const style = document.createElement("style");
     style.id = STYLE_ID;
     style.textContent = `
       .roche-plugin-date-battle {
-        --db-pink: #ec4899;
-        --db-pink-hover: #db2777;
-        --db-bg: #111827;
-        --db-surface: #1f2937;
-        --db-surface-light: #374151;
-        --db-text: #f3f4f6;
-        --db-text-muted: #9ca3af;
-        --db-border: #4b5563;
-        --db-user-bubble: #db2777;
-        --db-char-bubble: #374151;
+        --db-primary: #db2777;
+        --db-primary-hover: #be185d;
+        --db-primary-light: #fdf2f8;
+        --db-bg: #f9fafb;
+        --db-surface: #ffffff;
+        --db-surface-hover: #f3f4f6;
+        --db-text: #1f2937;
+        --db-text-muted: #6b7280;
+        --db-border: #e5e7eb;
+        
+        --db-user-bubble: #fbcfe8;
+        --db-user-text: #831843;
+        --db-char-bubble: #f3f4f6;
+        --db-char-text: #111827;
 
         width: 100%;
         height: 100%;
@@ -32,6 +36,17 @@
       .roche-plugin-date-battle * {
         box-sizing: border-box;
       }
+      .roche-plugin-date-battle .db-svg {
+        width: 18px;
+        height: 18px;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 2;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        display: inline-block;
+        vertical-align: middle;
+      }
       .roche-plugin-date-battle .db-view {
         width: 100%;
         height: 100%;
@@ -39,8 +54,57 @@
         flex-direction: column;
         overflow: hidden;
       }
-      /* 配置页面 */
-      .roche-plugin-date-battle .setup-container {
+      
+      /* 顶部现代导航栏 */
+      .roche-plugin-date-battle .db-navbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 24px;
+        height: 64px;
+        background: var(--db-surface);
+        border-bottom: 1px solid var(--db-border);
+        flex-shrink: 0;
+      }
+      .roche-plugin-date-battle .db-navbar-brand {
+        font-size: 18px;
+        font-weight: 700;
+        color: var(--db-primary);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .roche-plugin-date-battle .db-tabs {
+        display: flex;
+        gap: 8px;
+        height: 100%;
+        align-items: center;
+      }
+      .roche-plugin-date-battle .db-tab {
+        padding: 8px 16px;
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--db-text-muted);
+        background: transparent;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        transition: all 0.2s;
+      }
+      .roche-plugin-date-battle .db-tab:hover {
+        color: var(--db-primary);
+        background: var(--db-primary-light);
+      }
+      .roche-plugin-date-battle .db-tab.active {
+        color: var(--db-primary);
+        background: var(--db-primary-light);
+      }
+
+      /* 配置面板与副本列表 */
+      .roche-plugin-date-battle .scroll-content {
         padding: 24px;
         overflow-y: auto;
         flex: 1;
@@ -48,15 +112,16 @@
         margin: 0 auto;
         width: 100%;
       }
-      .roche-plugin-date-battle .setup-title {
-        font-size: 24px;
-        font-weight: bold;
-        color: var(--db-pink);
-        margin-bottom: 20px;
-        text-align: center;
+      .roche-plugin-date-battle .form-card {
+        background: var(--db-surface);
+        border: 1px solid var(--db-border);
+        border-radius: 12px;
+        padding: 24px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+        margin-bottom: 24px;
       }
       .roche-plugin-date-battle .form-group {
-        margin-bottom: 16px;
+        margin-bottom: 20px;
       }
       .roche-plugin-date-battle .form-row {
         display: flex;
@@ -68,8 +133,8 @@
       .roche-plugin-date-battle label {
         display: block;
         font-weight: 600;
-        margin-bottom: 6px;
-        color: var(--db-text-muted);
+        margin-bottom: 8px;
+        color: var(--db-text);
         font-size: 13px;
       }
       .roche-plugin-date-battle select,
@@ -77,76 +142,135 @@
       .roche-plugin-date-battle input[type="number"],
       .roche-plugin-date-battle textarea {
         width: 100%;
-        padding: 10px 12px;
+        padding: 11px 14px;
         background: var(--db-surface);
         border: 1px solid var(--db-border);
         border-radius: 8px;
         color: var(--db-text);
         font-size: 14px;
         outline: none;
-        transition: border-color 0.2s;
+        transition: border-color 0.2s, box-shadow 0.2s;
       }
       .roche-plugin-date-battle select:focus,
       .roche-plugin-date-battle input:focus,
       .roche-plugin-date-battle textarea:focus {
-        border-color: var(--db-pink);
+        border-color: var(--db-primary);
+        box-shadow: 0 0 0 3px rgba(219, 39, 119, 0.1);
       }
       .roche-plugin-date-battle textarea {
         resize: vertical;
         min-height: 80px;
       }
       .roche-plugin-date-battle .worldbook-list {
-        background: var(--db-surface);
+        background: var(--db-bg);
         border: 1px solid var(--db-border);
         border-radius: 8px;
-        padding: 10px;
-        max-height: 120px;
+        padding: 12px;
+        max-height: 140px;
         overflow-y: auto;
       }
       .roche-plugin-date-battle .worldbook-item {
         display: flex;
         align-items: center;
         gap: 8px;
-        margin-bottom: 6px;
+        margin-bottom: 8px;
         font-size: 13px;
+        cursor: pointer;
       }
-      .roche-plugin-date-battle .btn-group {
+      .roche-plugin-date-battle .btn-submit-container {
         display: flex;
         gap: 12px;
-        margin-top: 24px;
-      }
-      .roche-plugin-date-battle .btn {
-        flex: 1;
-        padding: 12px;
-        border: none;
-        border-radius: 8px;
-        font-weight: bold;
-        font-size: 15px;
-        cursor: pointer;
-        transition: background-color 0.2s, opacity 0.2s;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 6px;
-      }
-      .roche-plugin-date-battle .btn-primary {
-        background-color: var(--db-pink);
-        color: white;
-      }
-      .roche-plugin-date-battle .btn-primary:hover {
-        background-color: var(--db-pink-hover);
-      }
-      .roche-plugin-date-battle .btn-secondary {
-        background-color: var(--db-surface-light);
-        color: var(--db-text);
-      }
-      .roche-plugin-date-battle .btn-secondary:hover {
-        opacity: 0.9;
+        margin-top: 12px;
       }
       
-      /* 游戏页面 */
+      /* 美丽的副本卡片列表 */
+      .roche-plugin-date-battle .session-grid {
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+        margin-top: 8px;
+      }
+      .roche-plugin-date-battle .session-card {
+        background: var(--db-surface);
+        border: 1px solid var(--db-border);
+        border-radius: 10px;
+        padding: 16px 20px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+        transition: transform 0.2s, box-shadow 0.2s;
+      }
+      .roche-plugin-date-battle .session-card:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+      }
+      .roche-plugin-date-battle .session-info {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+      .roche-plugin-date-battle .session-title-text {
+        font-size: 15px;
+        font-weight: 700;
+        color: var(--db-text);
+      }
+      .roche-plugin-date-battle .session-desc {
+        font-size: 12px;
+        color: var(--db-text-muted);
+        display: flex;
+        gap: 12px;
+      }
+      .roche-plugin-date-battle .session-actions {
+        display: flex;
+        gap: 8px;
+      }
+
+      /* 统一交互按钮样式 */
+      .roche-plugin-date-battle .db-btn {
+        padding: 10px 18px;
+        border: none;
+        border-radius: 8px;
+        font-weight: 600;
+        font-size: 14px;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        transition: background-color 0.15s, opacity 0.15s;
+      }
+      .roche-plugin-date-battle .db-btn-pri {
+        background: var(--db-primary);
+        color: white;
+      }
+      .roche-plugin-date-battle .db-btn-pri:hover {
+        background: var(--db-primary-hover);
+      }
+      .roche-plugin-date-battle .db-btn-sec {
+        background: var(--db-surface-hover);
+        color: var(--db-text);
+        border: 1px solid var(--db-border);
+      }
+      .roche-plugin-date-battle .db-btn-sec:hover {
+        background: var(--db-border);
+      }
+      .roche-plugin-date-battle .db-btn-danger {
+        background: #fee2e2;
+        color: #991b1b;
+      }
+      .roche-plugin-date-battle .db-btn-danger:hover {
+        background: #fca5a5;
+      }
+      .roche-plugin-date-battle .db-btn-sm {
+        padding: 6px 12px;
+        font-size: 12px;
+        border-radius: 6px;
+      }
+
+      /* 游戏会话窗口 */
       .roche-plugin-date-battle .game-header {
-        padding: 12px 20px;
+        padding: 12px 24px;
         background: var(--db-surface);
         border-bottom: 1px solid var(--db-border);
         display: flex;
@@ -155,34 +279,22 @@
         flex-shrink: 0;
       }
       .roche-plugin-date-battle .game-header-title {
-        font-weight: bold;
-        font-size: 16px;
-        color: var(--db-pink);
+        font-weight: 700;
+        font-size: 15px;
+        color: var(--db-primary);
       }
       .roche-plugin-date-battle .game-header-actions {
         display: flex;
         gap: 8px;
       }
-      .roche-plugin-date-battle .game-header-btn {
-        background: var(--db-surface-light);
-        border: 1px solid var(--db-border);
-        color: var(--db-text-muted);
-        padding: 6px 12px;
-        border-radius: 6px;
-        font-size: 12px;
-        cursor: pointer;
-      }
-      .roche-plugin-date-battle .game-header-btn:hover {
-        color: var(--db-text);
-        border-color: var(--db-pink);
-      }
       .roche-plugin-date-battle .chat-container {
         flex: 1;
         overflow-y: auto;
-        padding: 20px;
+        padding: 24px;
         display: flex;
         flex-direction: column;
-        gap: 16px;
+        gap: 20px;
+        background: var(--db-bg);
       }
       .roche-plugin-date-battle .msg-wrapper {
         display: flex;
@@ -199,29 +311,32 @@
       }
       .roche-plugin-date-battle .msg-sender {
         font-size: 11px;
+        font-weight: 600;
         color: var(--db-text-muted);
-        margin-bottom: 4px;
+        margin-bottom: 5px;
       }
       .roche-plugin-date-battle .msg-bubble {
-        padding: 12px 16px;
-        border-radius: 12px;
+        padding: 12px 18px;
+        border-radius: 16px;
         font-size: 14px;
         line-height: 1.6;
         white-space: pre-wrap;
         word-break: break-all;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.03);
       }
       .roche-plugin-date-battle .msg-wrapper.user .msg-bubble {
         background-color: var(--db-user-bubble);
-        color: white;
+        color: var(--db-user-text);
         border-bottom-right-radius: 2px;
       }
       .roche-plugin-date-battle .msg-wrapper.char .msg-bubble {
         background-color: var(--db-char-bubble);
-        color: var(--db-text);
+        color: var(--db-char-text);
         border-bottom-left-radius: 2px;
+        border: 1px solid var(--db-border);
       }
       .roche-plugin-date-battle .input-area {
-        padding: 16px 20px;
+        padding: 16px 24px;
         background: var(--db-surface);
         border-top: 1px solid var(--db-border);
         display: flex;
@@ -231,35 +346,78 @@
       }
       .roche-plugin-date-battle .input-area textarea {
         flex: 1;
-        min-height: 50px;
+        min-height: 48px;
         max-height: 120px;
-        padding: 10px;
+        padding: 12px;
+        border-radius: 10px;
       }
       .roche-plugin-date-battle .input-area .send-btn {
-        background: var(--db-pink);
+        background: var(--db-primary);
         color: white;
         border: none;
-        padding: 12px 20px;
-        border-radius: 8px;
-        font-weight: bold;
+        padding: 12px 24px;
+        border-radius: 10px;
+        font-weight: 700;
         cursor: pointer;
-        height: 50px;
+        height: 48px;
         display: flex;
         align-items: center;
         justify-content: center;
+        transition: background-color 0.15s;
       }
       .roche-plugin-date-battle .input-area .send-btn:hover {
-        background-color: var(--db-pink-hover);
+        background-color: var(--db-primary-hover);
       }
       
-      /* 加载遮罩 */
+      /* 美化的自建弹窗 overlay */
+      .roche-plugin-date-battle .db-modal-overlay {
+        position: absolute;
+        top: 0; left: 0; right: 0; bottom: 0;
+        background: rgba(17, 24, 39, 0.4);
+        backdrop-filter: blur(4px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 200;
+      }
+      .roche-plugin-date-battle .db-modal-card {
+        background: var(--db-surface);
+        border-radius: 14px;
+        padding: 24px;
+        width: 90%;
+        max-width: 380px;
+        box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1);
+        border: 1px solid var(--db-border);
+        animation: db-pop 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      }
+      @keyframes db-pop {
+        from { transform: scale(0.95); opacity: 0; }
+        to { transform: scale(1); opacity: 1; }
+      }
+      .roche-plugin-date-battle .db-modal-title {
+        font-size: 16px;
+        font-weight: 700;
+        color: var(--db-text);
+        margin-bottom: 10px;
+      }
+      .roche-plugin-date-battle .db-modal-message {
+        font-size: 14px;
+        color: var(--db-text-muted);
+        line-height: 1.5;
+        margin-bottom: 20px;
+      }
+      .roche-plugin-date-battle .db-modal-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+      }
+
+      /* 载入全局 Loading */
       .roche-plugin-date-battle .db-overlay {
         position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: rgba(17, 24, 39, 0.85);
+        top: 0; left: 0; right: 0; bottom: 0;
+        background: rgba(255, 255, 255, 0.85);
+        backdrop-filter: blur(2px);
         display: flex;
         flex-direction: column;
         align-items: center;
@@ -270,10 +428,10 @@
       .roche-plugin-date-battle .db-spinner {
         width: 40px;
         height: 40px;
-        border: 4px solid rgba(236, 72, 153, 0.1);
-        border-left-color: var(--db-pink);
+        border: 3px solid var(--db-primary-light);
+        border-left-color: var(--db-primary);
         border-radius: 50%;
-        animation: db-spin 1s linear infinite;
+        animation: db-spin 0.8s linear infinite;
       }
       @keyframes db-spin {
         to { transform: rotate(360deg); }
@@ -285,6 +443,47 @@
   function removeStyles() {
     const styleTag = document.getElementById(STYLE_ID);
     if (styleTag) styleTag.remove();
+  }
+
+  // 2. SVG 图标路径集（彻底告别 emoji）
+  const SVGS = {
+    heart: `<svg class="db-svg" viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>`,
+    plus: `<svg class="db-svg" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>`,
+    folder: `<svg class="db-svg" viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>`,
+    play: `<svg class="db-svg" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>`,
+    trash: `<svg class="db-svg" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>`,
+    back: `<svg class="db-svg" viewBox="0 0 24 24"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>`,
+    logout: `<svg class="db-svg" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>`,
+    reset: `<svg class="db-svg" viewBox="0 0 24 24"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>`
+  };
+
+  // 3. 高级自建交互式模态确认框
+  function showCustomConfirm(container, title, message, onConfirm) {
+    const root = container.querySelector(".roche-plugin-date-battle") || container;
+    
+    // 如果已经存在弹窗，先移除
+    const exist = root.querySelector(".db-modal-overlay");
+    if (exist) exist.remove();
+
+    const overlay = document.createElement("div");
+    overlay.className = "db-modal-overlay";
+    overlay.innerHTML = `
+      <div class="db-modal-card">
+        <div class="db-modal-title">${escapeHtml(title)}</div>
+        <div class="db-modal-message">${escapeHtml(message)}</div>
+        <div class="db-modal-actions">
+          <button class="db-btn db-btn-sec" id="db-modal-cancel">取消</button>
+          <button class="db-btn db-btn-pri" id="db-modal-confirm">确认</button>
+        </div>
+      </div>
+    `;
+    root.appendChild(overlay);
+
+    overlay.querySelector("#db-modal-cancel").onclick = () => overlay.remove();
+    overlay.querySelector("#db-modal-confirm").onclick = () => {
+      overlay.remove();
+      onConfirm();
+    };
   }
 
   function showLoading(text) {
@@ -301,85 +500,546 @@
     if (overlay) overlay.style.display = "none";
   }
 
-  function escapeHtml(str) {
-    return str
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;")
-      .replace(/'/g, "&#039;");
+  // 4. 路由逻辑：Tab 切换与视图渲染
+  async function switchView(container, roche, viewName) {
+    const setupView = document.getElementById("db-setup-view");
+    const gameView = document.getElementById("db-game-view");
+    const listBtn = document.getElementById("db-nav-list-btn");
+    const newBtn = document.getElementById("db-nav-new-btn");
+
+    if (viewName === "setup") {
+      setupView.style.display = "flex";
+      gameView.style.display = "none";
+      newBtn.classList.add("active");
+      listBtn.classList.remove("active");
+      await renderSetupForm(container, roche);
+    } else if (viewName === "list") {
+      setupView.style.display = "flex";
+      gameView.style.display = "none";
+      newBtn.classList.remove("active");
+      listBtn.classList.add("active");
+      await renderSessionList(container, roche);
+    } else if (viewName === "game") {
+      setupView.style.display = "none";
+      gameView.style.display = "flex";
+    }
   }
 
-  // 渲染历史消息
-  function renderHistory(chatContainer, history, charName, userName) {
-    const displayHistory = history.filter((msg, idx) => {
-      return !(idx === 0 && msg.role === "user" && msg.content.includes("第一回合"));
-    });
+  // 5. 渲染：配置表单视图
+  async function renderSetupForm(container, roche) {
+    const setupDiv = document.getElementById("db-setup-view");
+    showLoading("加载人设与设定数据...");
 
-    chatContainer.innerHTML = displayHistory.map(msg => {
-      const isUser = msg.role === "user";
-      const sender = isUser ? userName : charName;
-      const bubbleClass = isUser ? "user" : "char";
-      return `
-        <div class="msg-wrapper ${bubbleClass}">
-          <div class="msg-sender">${sender}</div>
-          <div class="msg-bubble">${escapeHtml(msg.content)}</div>
+    let users = [];
+    let chars = [];
+    let worldbookCategories = [];
+
+    try {
+      users = await roche.persona.getUserPersonas() || [];
+      chars = await roche.character.list() || [];
+      worldbookCategories = await roche.worldbook.list() || [];
+    } catch (e) {
+      console.error("加载 Roche 数据失败:", e);
+    }
+
+    hideLoading();
+
+    if (users.length === 0 || chars.length === 0) {
+      setupDiv.innerHTML = `
+        <div class="scroll-content">
+          <div style="text-align: center; margin-top: 60px; color: var(--db-text-muted);">
+            <p>未检测到可用的用户人设或角色。</p>
+            <p style="font-size: 13px; margin-top: 8px;">请先在宿主应用中创建至少一个“用户人设”和一个“角色”再来开始大作战吧。</p>
+            <button class="db-btn db-btn-sec" id="db-close-empty" style="margin-top: 16px;">
+              ${SVGS.logout} 退出插件
+            </button>
+          </div>
         </div>
       `;
-    }).join("");
+      document.getElementById("db-close-empty").onclick = () => roche.ui.closeApp();
+      return;
+    }
 
-    chatContainer.scrollTop = chatContainer.scrollHeight;
+    const cachedConfig = await roche.storage.get("date_battle_last_config") || {};
+
+    const wbHtml = worldbookCategories.map(cat => {
+      const isChecked = (cachedConfig.worldbooks || []).includes(cat.id) ? "checked" : "";
+      return `
+        <label class="worldbook-item">
+          <input type="checkbox" name="db-wb-category" value="${cat.id}" ${isChecked}>
+          <span>${escapeHtml(cat.name || cat.title || cat.id)}</span>
+        </label>
+      `;
+    }).join("") || `<span style="color: var(--db-text-muted); font-size:12px;">暂无可用世界书</span>`;
+
+    setupDiv.innerHTML = `
+      <div class="scroll-content">
+        <div class="form-card">
+          <div class="form-row">
+            <div class="form-group">
+              <label>选择你的 User 人设</label>
+              <select id="db-user-select">
+                ${users.map(u => `<option value="${u.id}" ${cachedConfig.userId === u.id ? 'selected' : ''}>${escapeHtml(u.handle || u.name)}</option>`).join("")}
+              </select>
+            </div>
+            <div class="form-group">
+              <label>选择攻略的 Character 角色</label>
+              <select id="db-char-select">
+                ${chars.map(c => `<option value="${c.id}" ${cachedConfig.charId === c.id ? 'selected' : ''}>${escapeHtml(c.handle || c.name)}</option>`).join("")}
+              </select>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label>世界类型与画风</label>
+              <input type="text" id="db-world-type" placeholder="例如：赛博朋克、玄幻仙侠、现代校园恋爱" value="${escapeHtml(cachedConfig.worldType || '现代校园恋爱')}">
+            </div>
+            <div class="form-group" style="flex: 2; display: flex; gap: 8px;">
+              <div style="flex: 1;">
+                <label>单回合字数下限</label>
+                <input type="number" id="db-word-min" value="${cachedConfig.wordMin || 150}" min="30" max="1000">
+              </div>
+              <div style="flex: 1;">
+                <label>单回合字数上限</label>
+                <input type="number" id="db-word-max" value="${cachedConfig.wordMax || 350}" min="50" max="2000">
+              </div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>世界背景简介 (初始情境描述)</label>
+            <textarea id="db-world-intro" placeholder="例如：我们在放学后的夕阳教室里，因为被反锁在内不得不共处一室...">${escapeHtml(cachedConfig.worldIntro || '')}</textarea>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label>你的身份背景与设定 (User)</label>
+              <textarea id="db-user-bg" placeholder="在这个世界中，你的身份以及和对方的关系是什么？">${escapeHtml(cachedConfig.userBg || '')}</textarea>
+            </div>
+            <div class="form-group">
+              <label>对方的身份背景与设定 (Char)</label>
+              <textarea id="db-char-bg" placeholder="在这个世界中，对方扮演什么角色？">${escapeHtml(cachedConfig.charBg || '')}</textarea>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>搭载宿主世界书 (可多选)</label>
+            <div class="worldbook-list">
+              ${wbHtml}
+            </div>
+          </div>
+
+          <div class="btn-submit-container">
+            <button class="db-btn db-btn-pri" id="db-start-btn" style="flex: 1;">
+              ${SVGS.plus} 开启新的大作战副本
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    document.getElementById("db-start-btn").onclick = async () => {
+      await createNewGame(container, roche);
+    };
   }
 
-  // 渲染游戏核心界面
-  function renderGameView(container, roche, config, history, systemPrompt, character, userPersona) {
-    document.getElementById("db-setup-view").style.display = "none";
+  // 6. 渲染：我的副本（多存档）管理中心
+  async function renderSessionList(container, roche) {
+    const setupDiv = document.getElementById("db-setup-view");
+    showLoading("加载副本列表中...");
+
+    let sessions = await roche.storage.get("date_battle_sessions") || [];
+    hideLoading();
+
+    if (sessions.length === 0) {
+      setupDiv.innerHTML = `
+        <div class="scroll-content">
+          <div style="text-align: center; margin-top: 60px; color: var(--db-text-muted);">
+            <p>暂无任何开启过的大作战副本。</p>
+            <p style="font-size: 13px; margin-top: 8px;">赶快在上方“新建大作战”中开启一段浪漫冒险吧。</p>
+          </div>
+        </div>
+      `;
+      return;
+    }
+
+    setupDiv.innerHTML = `
+      <div class="scroll-content">
+        <div class="session-grid">
+          ${sessions.map(s => {
+            const timeStr = new Date(s.createdAt).toLocaleString(undefined, {
+              month: 'short', day: 'numeric', hour: '2-digit', minute:'2-digit'
+            });
+            return `
+              <div class="session-card">
+                <div class="session-info">
+                  <div class="session-title-text">${escapeHtml(s.name)}</div>
+                  <div class="session-desc">
+                    <span>画风: ${escapeHtml(s.worldType)}</span>
+                    <span>攻略角色: ${escapeHtml(s.characterName)}</span>
+                    <span>更新于: ${timeStr}</span>
+                  </div>
+                </div>
+                <div class="session-actions">
+                  <button class="db-btn db-btn-sec db-btn-sm" data-action="resume" data-id="${s.id}">
+                    ${SVGS.play} 继续
+                  </button>
+                  <button class="db-btn db-btn-danger db-btn-sm" data-action="delete" data-id="${s.id}">
+                    ${SVGS.trash} 删除
+                  </button>
+                </div>
+              </div>
+            `;
+          }).join("")}
+        </div>
+      </div>
+    `;
+
+    // 绑定继续/删除的操作监听器
+    setupDiv.querySelectorAll('[data-action="resume"]').forEach(btn => {
+      btn.onclick = async () => {
+        const id = btn.getAttribute("data-id");
+        await resumeGame(container, roche, id);
+      };
+    });
+
+    setupDiv.querySelectorAll('[data-action="delete"]').forEach(btn => {
+      btn.onclick = () => {
+        const id = btn.getAttribute("data-id");
+        showCustomConfirm(container, "删除副本", "确定要彻底删除该约会大作战副本吗？此操作无法恢复。", async () => {
+          await deleteSession(container, roche, id);
+        });
+      };
+    };
+  }
+
+  // 7. 新建副本流程
+  async function createNewGame(container, roche) {
+    try {
+      const userEl = document.getElementById("db-user-select");
+      const charEl = document.getElementById("db-char-select");
+      if (!userEl || !charEl) throw new Error("页面载入异常，请刷新重试");
+
+      const userId = userEl.value;
+      const charId = charEl.value;
+      const worldType = document.getElementById("db-world-type").value.trim() || "现代校园";
+      const wordMin = parseInt(document.getElementById("db-word-min").value, 10) || 150;
+      const wordMax = parseInt(document.getElementById("db-word-max").value, 10) || 350;
+      const worldIntro = document.getElementById("db-world-intro").value.trim();
+      const userBg = document.getElementById("db-user-bg").value.trim();
+      const charBg = document.getElementById("db-char-bg").value.trim();
+
+      const selectedWbElements = document.querySelectorAll('input[name="db-wb-category"]:checked');
+      const selectedWbs = Array.from(selectedWbElements).map(el => el.value);
+
+      if (wordMin >= wordMax) {
+        roche.ui.toast("单回合字数下限不能大于或等于上限！");
+        return;
+      }
+
+      const config = { userId, charId, worldType, wordMin, wordMax, worldIntro, userBg, charBg, worldbooks: selectedWbs };
+      
+      // 记住上一次填写的偏好
+      await roche.storage.set("date_battle_last_config", config);
+
+      showLoading("正在同步系统人设并构建开局舞台描述...");
+
+      // 获取 User 和 Char
+      let userPersona = null;
+      let character = null;
+      try {
+        const users = await roche.persona.getUserPersonas() || [];
+        userPersona = users.find(u => u.id === userId);
+        if (roche.character && typeof roche.character.get === 'function') {
+          character = await roche.character.get(charId);
+        } else {
+          const chars = await roche.character.list() || [];
+          character = chars.find(c => c.id === charId);
+        }
+      } catch (e) {
+        console.warn("加载核心人物报错，尝试降级", e);
+        const chars = await roche.character.list() || [];
+        character = chars.find(c => c.id === charId);
+      }
+
+      if (!userPersona || !character) {
+        throw new Error("加载人物数据失败，请确保宿主已预设角色和人设");
+      }
+
+      // 获取选定世界书
+      let worldbookText = "";
+      if (selectedWbs.length > 0) {
+        for (const catId of selectedWbs) {
+          try {
+            const entries = await roche.worldbook.getEntries({ categoryId: catId });
+            if (entries && entries.length > 0) {
+              worldbookText += `\n【世界书分类 - ${catId}】:\n` + entries.map(e => `- ${e.key || e.name}: ${e.content || e.value || ""}`).join("\n");
+            }
+          } catch(e) {
+            console.error(`世界书获取异常: ${catId}`, e);
+          }
+        }
+      }
+
+      const userName = userPersona.handle || userPersona.name || "玩家";
+      const charName = character.handle || character.name || "角色";
+
+      // 组装系统提示词（带有字数控制区间）
+      const systemPrompt = `
+你是一个优秀的 TRPG 主持人（GM）兼角色扮演者。当前正在进行一场名为《约会大作战》的回合制文字恋爱冒险游戏。
+
+【世界设定】
+世界类型/画风: ${worldType}
+场景起因与背景介绍: ${worldIntro || "一次偶然的邂逅"}
+${worldbookText ? `\n【引入参考世界书设定数据】\n${worldbookText}` : ''}
+
+【玩家信息 (User)】
+姓名/昵称: ${userName}
+玩家身份背景: ${userBg || "普通参与者"}
+完整人设性格参考: ${userPersona.persona || userPersona.bio || "无"}
+
+【对手角色信息 (Character)】
+姓名/昵称: ${charName}
+对手身份背景: ${charBg || "攻略对象"}
+完整人设性格参考: ${character.persona || character.bio || "无"}
+
+【游戏核心规则】
+1. 这是一场回合制互动。你负责扮演对手角色（${charName}）以及周围的世界环境（作为GM）。
+2. 你的每一次回复必须高度符合该角色的性格特色、言行习惯，并切合当前的世界画风。
+3. 你的每一回合回复文本长度（包含对白与描述）必须严格控制在 [${wordMin}] 字 到 [${wordMax}] 字 的区间内，不得太短，也不得超限。
+4. 在回复中：你需要描述对方角色的动作、对话和心理活动，同时描绘环境的变化，最后留出空间等待玩家（User）采取下一步行动。
+5. 绝不要替玩家（User）做出任何选择或擅自说出玩家的台词。
+6. 保持绝对的角色沉浸，严禁跳戏，严禁提及你是AI或这只是程序。
+`;
+
+      const openingPrompt = "请开启《约会大作战》的第一回合。作为主持人和对手，描述我们当前所处的具体场景、你的出场状态、并向我（玩家）打个招呼作为开端，等待我的第一步自由行动。";
+      let initialReply = "";
+      try {
+        const result = await roche.ai.chat({
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: openingPrompt }
+          ]
+        });
+        initialReply = result && (result.text || result.content);
+        if (!initialReply) throw new Error("AI 返回了空数据，请检查服务商及网络配置");
+      } catch (aiErr) {
+        throw new Error("AI 初始化世界失败: " + (aiErr.message || "请求超时"));
+      }
+
+      // 生成全新副本（存档）
+      const sessionId = "sess_" + Date.now().toString(36) + Math.random().toString(36).substr(2, 4);
+      const history = [
+        { role: "user", content: openingPrompt },
+        { role: "assistant", content: initialReply }
+      ];
+
+      const newSessionMeta = {
+        id: sessionId,
+        name: `与 ${charName} 的约会大作战`,
+        worldType,
+        characterName: charName,
+        userName,
+        createdAt: Date.now()
+      };
+
+      // 写入存储
+      let sessions = await roche.storage.get("date_battle_sessions") || [];
+      sessions.unshift(newSessionMeta);
+      await roche.storage.set("date_battle_sessions", sessions);
+
+      await roche.storage.set(`db_session_config_${sessionId}`, config);
+      await roche.storage.set(`db_session_history_${sessionId}`, history);
+      await roche.storage.set("date_battle_current_session_id", sessionId);
+
+      hideLoading();
+      
+      // 启动游戏主场景
+      renderGameView(container, roche, config, history, systemPrompt, character, userPersona, sessionId);
+
+    } catch (fatalError) {
+      hideLoading();
+      console.error(fatalError);
+      roche.ui.toast("创建大作战副本失败: " + fatalError.message);
+    }
+  }
+
+  // 8. 恢复（加载）已有副本流程
+  async function resumeGame(container, roche, sessionId) {
+    showLoading("正在读取副本进度及世界设定...");
+    try {
+      const config = await roche.storage.get(`db_session_config_${sessionId}`);
+      const history = await roche.storage.get(`db_session_history_${sessionId}`);
+
+      if (!config || !history) throw new Error("该副本数据已损坏或不存在");
+
+      let userPersona = null;
+      let character = null;
+
+      try {
+        const users = await roche.persona.getUserPersonas() || [];
+        userPersona = users.find(u => u.id === config.userId);
+        if (roche.character && typeof roche.character.get === 'function') {
+          character = await roche.character.get(config.charId);
+        } else {
+          const chars = await roche.character.list() || [];
+          character = chars.find(c => c.id === config.charId);
+        }
+      } catch (e) {
+        const chars = await roche.character.list() || [];
+        character = chars.find(c => c.id === config.charId);
+      }
+
+      if (!userPersona || !character) {
+        throw new Error("人设或角色未找到，可能已被宿主系统移除");
+      }
+
+      let worldbookText = "";
+      if (config.worldbooks && config.worldbooks.length > 0) {
+        for (const catId of config.worldbooks) {
+          try {
+            const entries = await roche.worldbook.getEntries({ categoryId: catId });
+            if (entries && entries.length > 0) {
+              worldbookText += `\n【世界书分类 - ${catId}】:\n` + entries.map(e => `- ${e.key || e.name}: ${e.content || e.value || ""}`).join("\n");
+            }
+          } catch(e) {
+            console.error(e);
+          }
+        }
+      }
+
+      const userName = userPersona.handle || userPersona.name || "玩家";
+      const charName = character.handle || character.name || "角色";
+
+      const systemPrompt = `
+你是一个优秀的 TRPG 主持人（GM）兼角色扮演者。当前正在进行一场名为《约会大作战》的回合制文字恋爱冒险游戏。
+
+【世界设定】
+世界类型/画风: ${config.worldType}
+场景起因与背景介绍: ${config.worldIntro || "一次偶然的邂逅"}
+${worldbookText ? `\n【引入参考世界书设定数据】\n${worldbookText}` : ''}
+
+【玩家信息 (User)】
+姓名/昵称: ${userName}
+玩家身份背景: ${config.userBg || "普通参与者"}
+完整人设性格参考: ${userPersona.persona || userPersona.bio || "无"}
+
+【对手角色信息 (Character)】
+姓名/昵称: ${charName}
+对手身份背景: ${config.charBg || "攻略对象"}
+完整人设性格参考: ${character.persona || character.bio || "无"}
+
+【游戏核心规则】
+1. 这是一场回合制互动。你负责扮演对手角色（${charName}）以及周围的世界环境（作为GM）。
+2. 你的每一次回复必须高度符合该角色的性格特色、言行习惯，并切合当前的世界画风。
+3. 你的每一回合回复文本长度（包含对白与描述）必须严格限制在 [${config.wordMin}] 字 到 [${config.wordMax}] 字 的区间内，不得太短，也不得超限。
+4. 在回复中：你需要描述对方角色的动作、对话和心理活动，同时描绘环境的变化，最后留出空间等待玩家（User）采取下一步行动。
+5. 绝不要替玩家（User）做出任何选择或擅自说出玩家的台词。
+6. 保持绝对的角色沉浸，严禁跳戏，严禁提及你是AI或这只是程序。
+`;
+
+      await roche.storage.set("date_battle_current_session_id", sessionId);
+      hideLoading();
+      renderGameView(container, roche, config, history, systemPrompt, character, userPersona, sessionId);
+
+    } catch (e) {
+      hideLoading();
+      roche.ui.toast("读取副本失败: " + e.message);
+    }
+  }
+
+  // 9. 删除特定副本流程
+  async function deleteSession(container, roche, sessionId) {
+    try {
+      let sessions = await roche.storage.get("date_battle_sessions") || [];
+      sessions = sessions.filter(s => s.id !== sessionId);
+      await roche.storage.set("date_battle_sessions", sessions);
+
+      // 清理对应的具体数据
+      await roche.storage.delete(`db_session_config_${sessionId}`);
+      await roche.storage.delete(`db_session_history_${sessionId}`);
+
+      const current = await roche.storage.get("date_battle_current_session_id");
+      if (current === sessionId) {
+        await roche.storage.delete("date_battle_current_session_id");
+      }
+
+      roche.ui.toast("副本已成功删除。");
+      await renderSessionList(container, roche);
+    } catch(e) {
+      roche.ui.toast("删除失败: " + e.message);
+    }
+  }
+
+  // 10. 渲染：游戏会话窗口逻辑（纯文本自由输入演绎 + 每轮自动备份）
+  function renderGameView(container, roche, config, history, systemPrompt, character, userPersona, sessionId) {
+    switchView(container, roche, "game");
     const gameDiv = document.getElementById("db-game-view");
-    gameDiv.style.display = "flex";
 
     const userName = userPersona.handle || userPersona.name || "你";
     const charName = character.handle || character.name || "对手";
 
     gameDiv.innerHTML = `
       <div class="game-header">
-        <div class="game-header-title">🌸 约会中: 与 ${charName} 在 [${config.worldType}]</div>
+        <div class="game-header-title">与 ${escapeHtml(charName)} 的冒险 [字数要求: ${config.wordMin}-${config.wordMax}]</div>
         <div class="game-header-actions">
-          <button class="game-header-btn" id="db-back-btn">配置列表</button>
-          <button class="game-header-btn" id="db-reset-btn">重置冒险</button>
-          <button class="game-header-btn" id="db-close-btn">退出</button>
+          <button class="db-btn db-btn-sec db-btn-sm" id="db-game-back">
+            ${SVGS.back} 返回大厅
+          </button>
+          <button class="db-btn db-btn-sec db-btn-sm" id="db-game-reset">
+            ${SVGS.reset} 重置本局
+          </button>
+          <button class="db-btn db-btn-sec db-btn-sm" id="db-game-close">
+            ${SVGS.logout} 退出
+          </button>
         </div>
       </div>
       
       <div class="chat-container" id="db-chat-container"></div>
       
       <div class="input-area">
-        <textarea id="db-input-text" placeholder="在这输入你的自由行动描述或说话内容（支持任意自由文本，按 Ctrl+Enter 快速发送）..."></textarea>
-        <button class="send-btn" id="db-send-btn">行动</button>
+        <textarea id="db-input-text" placeholder="输入你想做出的自由动作与台词描述（按 Ctrl+Enter 行动）..."></textarea>
+        <button class="send-btn" id="db-send-btn">发送</button>
       </div>
     `;
 
     const chatContainer = document.getElementById("db-chat-container");
     renderHistory(chatContainer, history, charName, userName);
 
-    document.getElementById("db-back-btn").onclick = () => {
-      gameDiv.style.display = "none";
-      document.getElementById("db-setup-view").style.display = "flex";
+    document.getElementById("db-game-back").onclick = () => {
+      switchView(container, roche, "list");
     };
 
-    document.getElementById("db-close-btn").onclick = () => roche.ui.closeApp();
+    document.getElementById("db-game-close").onclick = () => roche.ui.closeApp();
 
-    document.getElementById("db-reset-btn").onclick = async () => {
-      try {
-        const confirmReset = await roche.ui.confirm({
-          title: "重新开始？",
-          message: "确定要重新生成本次大作战吗？当前保存在本地的进度将会被清空。"
-        });
-        if (confirmReset) {
-          await startGame(container, roche, false);
+    document.getElementById("db-game-reset").onclick = () => {
+      showCustomConfirm(container, "重置本副本", "确定要清空本副本的聊天记录重新开始吗？副本配置不会丢失。", async () => {
+        try {
+          showLoading("正在重新描摹开场舞台...");
+          const openingPrompt = "请开启《约会大作战》的第一回合。作为主持人和对手，描述我们当前所处的具体场景、你的出场状态、并向我（玩家）打个招呼作为开端，等待我的第一步自由行动。";
+          const result = await roche.ai.chat({
+            messages: [
+              { role: "system", content: systemPrompt },
+              { role: "user", content: openingPrompt }
+            ]
+          });
+          const initialReply = result && (result.text || result.content);
+          if (!initialReply) throw new Error("AI 反应为空，请重试");
+
+          const newHistory = [
+            { role: "user", content: openingPrompt },
+            { role: "assistant", content: initialReply }
+          ];
+
+          await roche.storage.set(`db_session_history_${sessionId}`, newHistory);
+          hideLoading();
+          renderGameView(container, roche, config, newHistory, systemPrompt, character, userPersona, sessionId);
+        } catch (err) {
+          hideLoading();
+          roche.ui.toast("重置失败: " + err.message);
         }
-      } catch (err) {
-        console.error("重置异常", err);
-      }
+      });
     };
 
     const sendBtn = document.getElementById("db-send-btn");
@@ -391,13 +1051,22 @@
 
       textarea.disabled = true;
       sendBtn.disabled = true;
-      showLoading("对方正在酝酿反应...");
+      showLoading("对方正在组织下一步动作...");
 
       history.push({ role: "user", content: text });
       renderHistory(chatContainer, history, charName, userName);
       textarea.value = "";
 
-      await roche.storage.set("date_battle_history", history);
+      // 及时写入数据库防意外中断
+      await roche.storage.set(`db_session_history_${sessionId}`, history);
+
+      // 同步更新我的副本外显列表时间
+      let sessions = await roche.storage.get("date_battle_sessions") || [];
+      const currentIdx = sessions.findIndex(s => s.id === sessionId);
+      if (currentIdx !== -1) {
+        sessions[currentIdx].createdAt = Date.now();
+        await roche.storage.set("date_battle_sessions", sessions);
+      }
 
       try {
         const result = await roche.ai.chat({
@@ -408,19 +1077,17 @@
         });
 
         const replyContent = result && (result.text || result.content);
-        if (!replyContent) {
-          throw new Error("模型未正常返回文本，请检查接口或网络设置");
-        }
+        if (!replyContent) throw new Error("服务未回复有效对话");
 
         history.push({ role: "assistant", content: replyContent });
-        await roche.storage.set("date_battle_history", history);
+        await roche.storage.set(`db_session_history_${sessionId}`, history);
 
         renderHistory(chatContainer, history, charName, userName);
       } catch(e) {
-        console.error("AI 响应出错", e);
-        roche.ui.toast("通信出错：" + (e.message || "请求失败") + "。进度已自动为您在本地保存，请稍后重发。");
+        console.error(e);
+        roche.ui.toast("AI 沟通中断，原因：" + (e.message || "未知") + "。数据已在本地保存，您可以重试。");
         history.pop();
-        await roche.storage.set("date_battle_history", history);
+        await roche.storage.set(`db_session_history_${sessionId}`, history);
         renderHistory(chatContainer, history, charName, userName);
       } finally {
         textarea.disabled = false;
@@ -439,287 +1106,11 @@
     };
   }
 
-  // 游戏启动核心逻辑（内建错误拦截及 API 降级保障）
-  async function startGame(container, roche, isResume) {
-    try {
-      let config = {};
-      let history = [];
-
-      if (isResume) {
-        config = await roche.storage.get("date_battle_config");
-        history = await roche.storage.get("date_battle_history") || [];
-      } else {
-        const userEl = document.getElementById("db-user-select");
-        const charEl = document.getElementById("db-char-select");
-        if (!userEl || !charEl) {
-          throw new Error("界面元素丢失，请重新载入插件");
-        }
-
-        const userId = userEl.value;
-        const charId = charEl.value;
-        const worldType = document.getElementById("db-world-type").value.trim();
-        const wordCount = parseInt(document.getElementById("db-world-count").value, 10) || 300;
-        const worldIntro = document.getElementById("db-world-intro").value.trim();
-        const userBg = document.getElementById("db-user-bg").value.trim();
-        const charBg = document.getElementById("db-char-bg").value.trim();
-
-        const selectedWbElements = document.querySelectorAll('input[name="db-wb-category"]:checked');
-        const selectedWbs = Array.from(selectedWbElements).map(el => el.value);
-
-        config = { userId, charId, worldType, wordCount, worldIntro, userBg, charBg, worldbooks: selectedWbs };
-        history = [];
-
-        await roche.storage.set("date_battle_config", config);
-        await roche.storage.set("date_battle_history", []);
-      }
-
-      showLoading("正在加载角色设定并请求开局环境描述...");
-
-      let userPersona = null;
-      let character = null;
-
-      // 双轨高容错加载：若 roche.character.get 缺失或报错，降级为使用列表轮询检索
-      try {
-        const users = await roche.persona.getUserPersonas() || [];
-        userPersona = users.find(u => u.id === config.userId);
-
-        if (roche.character && typeof roche.character.get === 'function') {
-          character = await roche.character.get(config.charId);
-        } else {
-          const chars = await roche.character.list() || [];
-          character = chars.find(c => c.id === config.charId);
-        }
-      } catch (e) {
-        console.warn("常规加载角色出错，启动兜底机制...", e);
-        const chars = await roche.character.list() || [];
-        character = chars.find(c => c.id === config.charId);
-      }
-
-      if (!userPersona || !character) {
-        throw new Error("人设或角色加载失败，请检查选中的数据是否有效");
-      }
-
-      let worldbookText = "";
-      if (config.worldbooks && config.worldbooks.length > 0) {
-        for (const catId of config.worldbooks) {
-          try {
-            const entries = await roche.worldbook.getEntries({ categoryId: catId });
-            if (entries && entries.length > 0) {
-              worldbookText += `\n【世界书分类 - ${catId}】:\n` + entries.map(e => `- ${e.key || e.name}: ${e.content || e.value || ""}`).join("\n");
-            }
-          } catch(e) {
-            console.error(`世界书分类 ${catId} 获取异常`, e);
-          }
-        }
-      }
-
-      const systemPrompt = `
-你是一个优秀的 TRPG 主持人（GM）兼角色扮演者。当前正在进行一场名为《约会大作战》的回合制文字恋爱冒险游戏。
-
-【世界设定】
-世界类型/画风: ${config.worldType}
-场景起因与背景介绍: ${config.worldIntro || "一个令人期待的偶然邂逅"}
-${worldbookText ? `\n【引入参考世界书设定数据】\n${worldbookText}` : ''}
-
-【玩家信息 (User)】
-姓名/昵称: ${userPersona.handle || userPersona.name || "玩家"}
-玩家身份背景: ${config.userBg || "普通参与者"}
-完整人设性格参考: ${userPersona.persona || userPersona.bio || "无"}
-
-【对手角色信息 (Character)】
-姓名/昵称: ${character.handle || character.name || "角色"}
-对手身份背景: ${config.charBg || "攻略对象"}
-完整人设性格参考: ${character.persona || character.bio || "无"}
-
-【游戏核心规则】
-1. 这是一场回合制互动。你负责扮演对手角色（${character.handle || character.name}）以及周围的世界环境（作为GM）。
-2. 你的每一次回复必须高度符合该角色的性格特色、言行习惯，并切合当前的世界画风。
-3. 每次回复的内容长度必须严格限制在 ${config.wordCount} 字以内（多用神态描摹和精准对白，精简叙事）。
-4. 在回复中：你需要描述对方角色的动作、对话和心理活动，同时描绘环境的变化，最后留出空间等待玩家（User）采取下一步行动。
-5. 绝不要替玩家（User）做出任何选择或擅自说出玩家的台词。
-6. 保持绝对的角色沉浸，严禁跳戏，严禁提及你是AI或这只是程序。
-`;
-
-      if (history.length === 0) {
-        const openingPrompt = "请开启《约会大作战》的第一回合。作为主持人和对手，描述我们当前所处的具体场景、你的出场状态、并向我（玩家）打个招呼作为开端，等待我的第一步自由行动。";
-        try {
-          const result = await roche.ai.chat({
-            messages: [
-              { role: "system", content: systemPrompt },
-              { role: "user", content: openingPrompt }
-            ]
-          });
-
-          const initialReply = result && (result.text || result.content);
-          if (!initialReply) {
-            throw new Error("AI 接口未返回有效文字，请确认 AI 设置已连接且可用");
-          }
-
-          history.push({ role: "user", content: openingPrompt });
-          history.push({ role: "assistant", content: initialReply });
-          await roche.storage.set("date_battle_history", history);
-        } catch(e) {
-          throw new Error("呼叫 AI 开启游戏失败，具体原因: " + (e.message || "请求超时"));
-        }
-      }
-
-      hideLoading();
-      renderGameView(container, roche, config, history, systemPrompt, character, userPersona);
-
-    } catch (fatalError) {
-      hideLoading();
-      console.error("游戏启动致命异常:", fatalError);
-      roche.ui.toast("启动大作战失败：" + fatalError.message);
-    }
-  }
-
-  // 渲染设置视图
-  async function renderSetupView(container, roche) {
-    try {
-      const setupDiv = document.getElementById("db-setup-view");
-      showLoading("加载人设与设定数据...");
-
-      let users = [];
-      let chars = [];
-      let worldbookCategories = [];
-
-      try {
-        users = await roche.persona.getUserPersonas() || [];
-        chars = await roche.character.list() || [];
-        worldbookCategories = await roche.worldbook.list() || [];
-      } catch (e) {
-        console.error("加载 Roche 数据失败:", e);
-      }
-
-      hideLoading();
-
-      if (users.length === 0 || chars.length === 0) {
-        setupDiv.innerHTML = `
-          <div class="setup-container">
-            <div class="setup-title">🌸 约会大作战 🌸</div>
-            <div style="text-align: center; margin-top: 40px; color: var(--db-text-muted);">
-              <p>⚠️ 未检测到可用的 User 人设 或 Character 角色。</p>
-              <p style="font-size: 13px; margin-top: 10px;">请先在 Roche 宿主应用中创建至少一个“用户人设”和一个“角色”再来开始大作战吧！</p>
-              <button class="btn btn-secondary" id="db-close-empty" style="margin: 20px auto 0; max-width: 200px;">退出插件</button>
-            </div>
-          </div>
-        `;
-        document.getElementById("db-close-empty").onclick = () => roche.ui.closeApp();
-        return;
-      }
-
-      const cachedConfig = await roche.storage.get("date_battle_config") || {};
-      const cachedHistory = await roche.storage.get("date_battle_history") || [];
-
-      const wbHtml = worldbookCategories.map(cat => {
-        const isChecked = (cachedConfig.worldbooks || []).includes(cat.id) ? "checked" : "";
-        return `
-          <label class="worldbook-item">
-            <input type="checkbox" name="db-wb-category" value="${cat.id}" ${isChecked}>
-            <span>${cat.name || cat.title || cat.id}</span>
-          </label>
-        `;
-      }).join("") || `<span style="color: var(--db-text-muted); font-size:12px;">暂无可用世界书</span>`;
-
-      setupDiv.innerHTML = `
-        <div class="setup-container">
-          <div class="setup-title">🌸 约会大作战 🌸</div>
-          
-          <div class="form-row">
-            <div class="form-group">
-              <label>选择你的 User 人设</label>
-              <select id="db-user-select">
-                ${users.map(u => `<option value="${u.id}" ${cachedConfig.userId === u.id ? 'selected' : ''}>${u.handle || u.name}</option>`).join("")}
-              </select>
-            </div>
-            <div class="form-group">
-              <label>选择攻略的 Character 角色</label>
-              <select id="db-char-select">
-                ${chars.map(c => `<option value="${c.id}" ${cachedConfig.charId === c.id ? 'selected' : ''}>${c.handle || c.name}</option>`).join("")}
-              </select>
-            </div>
-          </div>
-
-          <div class="form-row">
-            <div class="form-group">
-              <label>世界类型/画风</label>
-              <input type="text" id="db-world-type" placeholder="例如：赛博朋克、玄幻仙侠、现代校园恋爱" value="${cachedConfig.worldType || '现代校园恋爱'}">
-            </div>
-            <div class="form-group">
-              <label>每回合 AI 生成字数上限</label>
-              <input type="number" id="db-world-count" value="${cachedConfig.wordCount || 300}" min="50" max="800">
-            </div>
-          </div>
-
-          <div class="form-group">
-            <label>世界背景简介 (初始情境描述)</label>
-            <textarea id="db-world-intro" placeholder="例如：我们在放学后的夕阳教室里，因为被反锁在内不得不共处一室...">${cachedConfig.worldIntro || ''}</textarea>
-          </div>
-
-          <div class="form-row">
-            <div class="form-group">
-              <label>你的身份背景与设定 (User)</label>
-              <textarea id="db-user-bg" placeholder="在这个世界中，你的身份以及和对方的关系是什么？">${cachedConfig.userBg || ''}</textarea>
-            </div>
-            <div class="form-group">
-              <label>对方的身份背景与设定 (Char)</label>
-              <textarea id="db-char-bg" placeholder="在这个世界中，对方扮演什么角色？">${cachedConfig.charBg || ''}</textarea>
-            </div>
-          </div>
-
-          <div class="form-group">
-            <label>搭载宿主世界书 (可多选)</label>
-            <div class="worldbook-list">
-              ${wbHtml}
-            </div>
-          </div>
-
-          <div class="btn-group">
-            <button class="btn btn-secondary" id="db-exit-btn">退出</button>
-            ${cachedHistory.length > 0 ? `<button class="btn btn-secondary" id="db-resume-btn">继续上次大作战</button>` : ''}
-            <button class="btn btn-primary" id="db-start-btn">开启新的大作战 ✨</button>
-          </div>
-        </div>
-      `;
-
-      document.getElementById("db-exit-btn").onclick = () => roche.ui.closeApp();
-      
-      if (document.getElementById("db-resume-btn")) {
-        document.getElementById("db-resume-btn").onclick = async () => {
-          try {
-            await startGame(container, roche, true);
-          } catch (e) {
-            roche.ui.toast("继续游戏异常: " + e.message);
-          }
-        };
-      }
-
-      document.getElementById("db-start-btn").onclick = async () => {
-        try {
-          if (cachedHistory.length > 0) {
-            const override = await roche.ui.confirm({
-              title: "覆盖进度？",
-              message: "检测到您有未完成的游戏进度。开启新游戏将覆盖原进度，是否继续？"
-            });
-            if (!override) return;
-          }
-          await startGame(container, roche, false);
-        } catch (e) {
-          roche.ui.toast("启动大作战异常: " + e.message);
-        }
-      };
-
-    } catch (setupError) {
-      hideLoading();
-      console.error("配置加载错误", setupError);
-    }
-  }
-
-  // 注册插件
+  // 11. 主程序注册
   window.RochePlugin.register({
     id: "date-battle",
     name: "约会大作战",
-    version: "1.0.0",
+    version: "1.1.0",
     apps: [
       {
         id: "date-battle-app",
@@ -730,18 +1121,50 @@ ${worldbookText ? `\n【引入参考世界书设定数据】\n${worldbookText}` 
           injectStyles();
           container.innerHTML = `
             <div class="roche-plugin-date-battle">
+              <!-- 统一质感导航栏 -->
+              <div class="db-navbar">
+                <div class="db-navbar-brand">
+                  ${SVGS.heart} 约会大作战
+                </div>
+                <div class="db-tabs">
+                  <button class="db-tab active" id="db-nav-new-btn">${SVGS.plus} 新建大作战</button>
+                  <button class="db-tab" id="db-nav-list-btn">${SVGS.folder} 我的副本</button>
+                </div>
+              </div>
+
+              <!-- 主视图视图层 -->
               <div id="db-setup-view" class="db-view"></div>
               <div id="db-game-view" class="db-view" style="display: none;"></div>
               
-              <!-- 加载遮罩 -->
+              <!-- 全局轻盈 Loading 覆盖层 -->
               <div id="db-loading-overlay" class="db-overlay" style="display: none;">
                 <div class="db-spinner"></div>
                 <div id="db-loading-text">正在初始化世界...</div>
               </div>
             </div>
           `;
-          await renderSetupView(container, roche);
+
+          // 配置 Tab 切换触发器
+          document.getElementById("db-nav-new-btn").onclick = async () => {
+            await switchView(container, roche, "setup");
+          };
+          document.getElementById("db-nav-list-btn").onclick = async () => {
+            await switchView(container, roche, "list");
+          };
+
+          // 缺省检测：如果有活跃的游戏副本未完结，直接进入游戏；否则默认显示新建
+          const lastActiveSess = await roche.storage.get("date_battle_current_session_id");
+          if (lastActiveSess) {
+            try {
+              await resumeGame(container, roche, lastActiveSess);
+              return;
+            } catch(e) {
+              console.warn("自动断点恢复失败，重定向到表单页", e);
+            }
+          }
+          await switchView(container, roche, "setup");
         },
+
         async unmount(container, roche) {
           removeStyles();
           container.replaceChildren();
