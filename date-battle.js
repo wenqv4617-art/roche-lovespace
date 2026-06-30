@@ -1,7 +1,7 @@
 (function() {
   const STYLE_ID = "roche-plugin-date-battle-styles";
 
-  // 1. 样式表重构（茱萸粉、白皙、雅灰等高质感浅色组合）
+  // 1. 扁平极简浅色主题样式（顶栏压缩至 48px）
   function injectStyles() {
     if (document.getElementById(STYLE_ID)) return;
     const style = document.createElement("style");
@@ -55,43 +55,45 @@
         overflow: hidden;
       }
       
-      /* 顶部现代导航栏 */
+      /* 顶栏压缩至极简的 48px 高度 */
       .roche-plugin-date-battle .db-navbar {
         display: flex;
         align-items: center;
         justify-content: space-between;
-        padding: 0 24px;
-        height: 64px;
+        padding: 0 16px;
+        height: 48px;
         background: var(--db-surface);
         border-bottom: 1px solid var(--db-border);
         flex-shrink: 0;
       }
       .roche-plugin-date-battle .db-navbar-brand {
-        font-size: 18px;
+        font-size: 15px;
         font-weight: 700;
         color: var(--db-primary);
         display: flex;
         align-items: center;
-        gap: 8px;
+        gap: 6px;
       }
       .roche-plugin-date-battle .db-tabs {
         display: flex;
-        gap: 8px;
+        gap: 4px;
         height: 100%;
         align-items: center;
       }
+      
+      /* 纯图标 Tab/按钮控制 */
       .roche-plugin-date-battle .db-tab {
-        padding: 8px 16px;
-        font-size: 14px;
-        font-weight: 600;
-        color: var(--db-text-muted);
-        background: transparent;
+        width: 32px;
+        height: 32px;
+        padding: 0;
         border: none;
-        border-radius: 8px;
+        background: transparent;
+        border-radius: 6px;
         cursor: pointer;
         display: flex;
         align-items: center;
-        gap: 6px;
+        justify-content: center;
+        color: var(--db-text-muted);
         transition: all 0.2s;
       }
       .roche-plugin-date-battle .db-tab:hover {
@@ -102,10 +104,69 @@
         color: var(--db-primary);
         background: var(--db-primary-light);
       }
+      
+      /* 游戏头部极简控制（48px） */
+      .roche-plugin-date-battle .game-header {
+        padding: 0 16px;
+        height: 48px;
+        background: var(--db-surface);
+        border-bottom: 1px solid var(--db-border);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-shrink: 0;
+      }
+      .roche-plugin-date-battle .game-header-title {
+        font-weight: 700;
+        font-size: 14px;
+        color: var(--db-primary);
+      }
+      .roche-plugin-date-battle .game-header-actions {
+        display: flex;
+        gap: 4px;
+      }
+      
+      /* 高级纯图标按钮样式 */
+      .roche-plugin-date-battle .db-btn-icon {
+        width: 32px;
+        height: 32px;
+        border: 1px solid var(--db-border);
+        background: var(--db-surface);
+        color: var(--db-text-muted);
+        border-radius: 6px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.2s;
+        padding: 0;
+      }
+      .roche-plugin-date-battle .db-btn-icon:hover {
+        color: var(--db-primary);
+        border-color: var(--db-primary);
+        background: var(--db-primary-light);
+      }
+      .roche-plugin-date-battle .db-btn-icon-danger {
+        width: 32px;
+        height: 32px;
+        border: 1px solid #fca5a5;
+        background: #fee2e2;
+        color: #991b1b;
+        border-radius: 6px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.2s;
+        padding: 0;
+      }
+      .roche-plugin-date-battle .db-btn-icon-danger:hover {
+        background: #fca5a5;
+      }
 
-      /* 配置面板与副本列表 */
+      /* 表单排版布局 */
       .roche-plugin-date-battle .scroll-content {
-        padding: 24px;
+        padding: 16px;
         overflow-y: auto;
         flex: 1;
         max-width: 800px;
@@ -116,12 +177,12 @@
         background: var(--db-surface);
         border: 1px solid var(--db-border);
         border-radius: 12px;
-        padding: 24px;
+        padding: 20px;
         box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-        margin-bottom: 24px;
+        margin-bottom: 20px;
       }
       .roche-plugin-date-battle .form-group {
-        margin-bottom: 20px;
+        margin-bottom: 16px;
       }
       .roche-plugin-date-battle .form-row {
         display: flex;
@@ -133,7 +194,7 @@
       .roche-plugin-date-battle label {
         display: block;
         font-weight: 600;
-        margin-bottom: 8px;
+        margin-bottom: 6px;
         color: var(--db-text);
         font-size: 13px;
       }
@@ -142,7 +203,7 @@
       .roche-plugin-date-battle input[type="number"],
       .roche-plugin-date-battle textarea {
         width: 100%;
-        padding: 11px 14px;
+        padding: 10px 12px;
         background: var(--db-surface);
         border: 1px solid var(--db-border);
         border-radius: 8px;
@@ -183,18 +244,18 @@
         margin-top: 12px;
       }
       
-      /* 美丽的副本卡片列表 */
+      /* 存档副本列表 */
       .roche-plugin-date-battle .session-grid {
         display: flex;
         flex-direction: column;
-        gap: 14px;
-        margin-top: 8px;
+        gap: 12px;
+        margin-top: 4px;
       }
       .roche-plugin-date-battle .session-card {
         background: var(--db-surface);
         border: 1px solid var(--db-border);
         border-radius: 10px;
-        padding: 16px 20px;
+        padding: 12px 16px;
         display: flex;
         align-items: center;
         justify-content: space-between;
@@ -211,22 +272,22 @@
         gap: 4px;
       }
       .roche-plugin-date-battle .session-title-text {
-        font-size: 15px;
+        font-size: 14px;
         font-weight: 700;
         color: var(--db-text);
       }
       .roche-plugin-date-battle .session-desc {
-        font-size: 12px;
+        font-size: 11px;
         color: var(--db-text-muted);
         display: flex;
         gap: 12px;
       }
       .roche-plugin-date-battle .session-actions {
         display: flex;
-        gap: 8px;
+        gap: 6px;
       }
 
-      /* 统一交互按钮样式 */
+      /* 主体按钮 */
       .roche-plugin-date-battle .db-btn {
         padding: 10px 18px;
         border: none;
@@ -255,45 +316,15 @@
       .roche-plugin-date-battle .db-btn-sec:hover {
         background: var(--db-border);
       }
-      .roche-plugin-date-battle .db-btn-danger {
-        background: #fee2e2;
-        color: #991b1b;
-      }
-      .roche-plugin-date-battle .db-btn-danger:hover {
-        background: #fca5a5;
-      }
-      .roche-plugin-date-battle .db-btn-sm {
-        padding: 6px 12px;
-        font-size: 12px;
-        border-radius: 6px;
-      }
 
-      /* 游戏会话窗口 */
-      .roche-plugin-date-battle .game-header {
-        padding: 12px 24px;
-        background: var(--db-surface);
-        border-bottom: 1px solid var(--db-border);
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        flex-shrink: 0;
-      }
-      .roche-plugin-date-battle .game-header-title {
-        font-weight: 700;
-        font-size: 15px;
-        color: var(--db-primary);
-      }
-      .roche-plugin-date-battle .game-header-actions {
-        display: flex;
-        gap: 8px;
-      }
+      /* 消息对话区域 */
       .roche-plugin-date-battle .chat-container {
         flex: 1;
         overflow-y: auto;
-        padding: 24px;
+        padding: 20px;
         display: flex;
         flex-direction: column;
-        gap: 20px;
+        gap: 16px;
         background: var(--db-bg);
       }
       .roche-plugin-date-battle .msg-wrapper {
@@ -313,11 +344,11 @@
         font-size: 11px;
         font-weight: 600;
         color: var(--db-text-muted);
-        margin-bottom: 5px;
+        margin-bottom: 4px;
       }
       .roche-plugin-date-battle .msg-bubble {
-        padding: 12px 18px;
-        border-radius: 16px;
+        padding: 10px 14px;
+        border-radius: 12px;
         font-size: 14px;
         line-height: 1.6;
         white-space: pre-wrap;
@@ -336,30 +367,30 @@
         border: 1px solid var(--db-border);
       }
       .roche-plugin-date-battle .input-area {
-        padding: 16px 24px;
+        padding: 12px 16px;
         background: var(--db-surface);
         border-top: 1px solid var(--db-border);
         display: flex;
-        gap: 12px;
+        gap: 10px;
         align-items: flex-end;
         flex-shrink: 0;
       }
       .roche-plugin-date-battle .input-area textarea {
         flex: 1;
-        min-height: 48px;
-        max-height: 120px;
-        padding: 12px;
-        border-radius: 10px;
+        min-height: 40px;
+        max-height: 100px;
+        padding: 10px;
+        border-radius: 8px;
       }
       .roche-plugin-date-battle .input-area .send-btn {
         background: var(--db-primary);
         color: white;
         border: none;
-        padding: 12px 24px;
-        border-radius: 10px;
+        padding: 10px 18px;
+        border-radius: 8px;
         font-weight: 700;
         cursor: pointer;
-        height: 48px;
+        height: 40px;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -369,7 +400,7 @@
         background-color: var(--db-primary-hover);
       }
       
-      /* 美化的自建弹窗 overlay */
+      /* 弹窗设计 */
       .roche-plugin-date-battle .db-modal-overlay {
         position: absolute;
         top: 0; left: 0; right: 0; bottom: 0;
@@ -382,11 +413,11 @@
       }
       .roche-plugin-date-battle .db-modal-card {
         background: var(--db-surface);
-        border-radius: 14px;
-        padding: 24px;
+        border-radius: 12px;
+        padding: 20px;
         width: 90%;
-        max-width: 380px;
-        box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1);
+        max-width: 360px;
+        box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1);
         border: 1px solid var(--db-border);
         animation: db-pop 0.2s cubic-bezier(0.16, 1, 0.3, 1);
       }
@@ -395,24 +426,24 @@
         to { transform: scale(1); opacity: 1; }
       }
       .roche-plugin-date-battle .db-modal-title {
-        font-size: 16px;
+        font-size: 15px;
         font-weight: 700;
         color: var(--db-text);
-        margin-bottom: 10px;
+        margin-bottom: 8px;
       }
       .roche-plugin-date-battle .db-modal-message {
-        font-size: 14px;
+        font-size: 13px;
         color: var(--db-text-muted);
         line-height: 1.5;
-        margin-bottom: 20px;
+        margin-bottom: 16px;
       }
       .roche-plugin-date-battle .db-modal-actions {
         display: flex;
         justify-content: flex-end;
-        gap: 10px;
+        gap: 8px;
       }
 
-      /* 载入全局 Loading */
+      /* Loading */
       .roche-plugin-date-battle .db-overlay {
         position: absolute;
         top: 0; left: 0; right: 0; bottom: 0;
@@ -426,8 +457,8 @@
         gap: 16px;
       }
       .roche-plugin-date-battle .db-spinner {
-        width: 40px;
-        height: 40px;
+        width: 36px;
+        height: 36px;
         border: 3px solid var(--db-primary-light);
         border-left-color: var(--db-primary);
         border-radius: 50%;
@@ -445,7 +476,7 @@
     if (styleTag) styleTag.remove();
   }
 
-  // 2. SVG 图标路径集（彻底告别 emoji）
+  // 2. 纯矢量路径 SVG 图标资源 (不含任何 emoji)
   const SVGS = {
     heart: `<svg class="db-svg" viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>`,
     plus: `<svg class="db-svg" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>`,
@@ -454,13 +485,19 @@
     trash: `<svg class="db-svg" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>`,
     back: `<svg class="db-svg" viewBox="0 0 24 24"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>`,
     logout: `<svg class="db-svg" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>`,
-    reset: `<svg class="db-svg" viewBox="0 0 24 24"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>`
+    reset: `<svg class="db-svg" viewBox="0 0 24 24"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>`,
+    home: `<svg class="db-svg" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>`
   };
 
-  // 3. 高级自建交互式模态确认框
+  // 3. 人称文本描述映射
+  const PRONOUN_MAP = {
+    first: "第一人称 (我)",
+    second: "第二人称 (你)",
+    third: "第三人称 (名字或他/她)"
+  };
+
   function showCustomConfirm(container, title, message, onConfirm) {
     const root = container.querySelector(".roche-plugin-date-battle") || container;
-    
     const exist = root.querySelector(".db-modal-overlay");
     if (exist) exist.remove();
 
@@ -508,7 +545,6 @@
       .replace(/'/g, "&#039;");
   }
 
-  // 历史消息流渲染
   function renderHistory(chatContainer, history, charName, userName) {
     const displayHistory = history.filter((msg, idx) => {
       return !(idx === 0 && msg.role === "user" && msg.content.includes("第一回合"));
@@ -529,7 +565,7 @@
     chatContainer.scrollTop = chatContainer.scrollHeight;
   }
 
-  // 渲染游戏核心界面
+  // 4. 渲染：游戏副本视角 (全 SVG 控制，顶栏优化)
   function renderGameView(container, roche, config, history, systemPrompt, character, userPersona, sessionId) {
     switchView(container, roche, "game");
     const gameDiv = document.getElementById("db-game-view");
@@ -539,16 +575,16 @@
 
     gameDiv.innerHTML = `
       <div class="game-header">
-        <div class="game-header-title">与 ${escapeHtml(charName)} 的冒险 [字数要求: ${config.wordMin}-${config.wordMax}]</div>
+        <div class="game-header-title">${escapeHtml(config.sessionName)}</div>
         <div class="game-header-actions">
-          <button class="db-btn db-btn-sec db-btn-sm" id="db-game-back">
-            ${SVGS.back} 返回大厅
+          <button class="db-btn-icon" id="db-game-back" title="返回副本大厅">
+            ${SVGS.back}
           </button>
-          <button class="db-btn db-btn-sec db-btn-sm" id="db-game-reset">
-            ${SVGS.reset} 重置本局
+          <button class="db-btn-icon" id="db-game-reset" title="重置本局进度">
+            ${SVGS.reset}
           </button>
-          <button class="db-btn db-btn-sec db-btn-sm" id="db-game-close">
-            ${SVGS.logout} 退出
+          <button class="db-btn-icon" id="db-game-close" title="退出插件并返回宿主">
+            ${SVGS.logout}
           </button>
         </div>
       </div>
@@ -661,7 +697,7 @@
     };
   }
 
-  // 路由器逻辑
+  // 路由器
   async function switchView(container, roche, viewName) {
     const setupView = document.getElementById("db-setup-view");
     const gameView = document.getElementById("db-game-view");
@@ -686,7 +722,7 @@
     }
   }
 
-  // 新建副本流程
+  // 新建大作战副本核心链路
   async function createNewGame(container, roche) {
     try {
       const userEl = document.getElementById("db-user-select");
@@ -695,12 +731,15 @@
 
       const userId = userEl.value;
       const charId = charEl.value;
+      const sessionNameInput = document.getElementById("db-session-name").value.trim();
       const worldType = document.getElementById("db-world-type").value.trim() || "现代校园";
       const wordMin = parseInt(document.getElementById("db-word-min").value, 10) || 150;
       const wordMax = parseInt(document.getElementById("db-word-max").value, 10) || 350;
       const worldIntro = document.getElementById("db-world-intro").value.trim();
       const userBg = document.getElementById("db-user-bg").value.trim();
       const charBg = document.getElementById("db-char-bg").value.trim();
+      const userPronoun = document.getElementById("db-user-pronoun").value;
+      const charPronoun = document.getElementById("db-char-pronoun").value;
 
       const selectedWbElements = document.querySelectorAll('input[name="db-wb-category"]:checked');
       const selectedWbs = Array.from(selectedWbElements).map(el => el.value);
@@ -710,7 +749,24 @@
         return;
       }
 
-      const config = { userId, charId, worldType, wordMin, wordMax, worldIntro, userBg, charBg, worldbooks: selectedWbs };
+      // 处理副本命名，限制为 15 字符以内 [1]
+      let displaySessionName = sessionNameInput || `大作战副本_${Date.now().toString(36).toUpperCase()}`;
+      displaySessionName = displaySessionName.substring(0, 15);
+
+      const config = { 
+        userId, 
+        charId, 
+        sessionName: displaySessionName, 
+        worldType, 
+        wordMin, 
+        wordMax, 
+        worldIntro, 
+        userBg, 
+        charBg, 
+        userPronoun, 
+        charPronoun, 
+        worldbooks: selectedWbs 
+      };
       
       await roche.storage.set("date_battle_last_config", config);
       showLoading("正在同步系统人设并构建开局舞台描述...");
@@ -753,6 +809,7 @@
       const userName = userPersona.handle || userPersona.name || "玩家";
       const charName = character.handle || character.name || "角色";
 
+      // 精确融入用户配置的用户人称与角色人称约束 [3]
       const systemPrompt = `
 你是一个优秀的 TRPG 主持人（GM）兼角色扮演者。当前正在进行一场名为《约会大作战》的回合制文字恋爱冒险游戏。
 
@@ -770,6 +827,12 @@ ${worldbookText ? `\n【引入参考世界书设定数据】\n${worldbookText}` 
 姓名/昵称: ${charName}
 对手身份背景: ${charBg || "攻略对象"}
 完整人设性格参考: ${character.persona || character.bio || "无"}
+
+【主视角人称约束】
+在本次互动所有的场景演进、旁白对话以及内心描写叙述中，必须严格执行以下人称视角规定：
+- 描写玩家 (User: ${userName}) 行动、对话与遭遇时，主视角人称必须为：${PRONOUN_MAP[userPronoun]}。
+- 描写对手 (Character: ${charName}) 行动、对话与遭遇时，主视角人称必须为：${PRONOUN_MAP[charPronoun]}。
+请你在推进世界和叙述对白时，绝对遵守这一人称语法规范！
 
 【游戏核心规则】
 1. 这是一场回合制互动。你负责扮演对手角色（${charName}）以及周围的世界环境（作为GM）。
@@ -803,7 +866,7 @@ ${worldbookText ? `\n【引入参考世界书设定数据】\n${worldbookText}` 
 
       const newSessionMeta = {
         id: sessionId,
-        name: `与 ${charName} 的约会大作战`,
+        name: displaySessionName,
         worldType,
         characterName: charName,
         userName,
@@ -875,6 +938,7 @@ ${worldbookText ? `\n【引入参考世界书设定数据】\n${worldbookText}` 
       const userName = userPersona.handle || userPersona.name || "玩家";
       const charName = character.handle || character.name || "角色";
 
+      // 组装带有自定义人称约束的指令
       const systemPrompt = `
 你是一个优秀的 TRPG 主持人（GM）兼角色扮演者。当前正在进行一场名为《约会大作战》的回合制文字恋爱冒险游戏。
 
@@ -892,6 +956,12 @@ ${worldbookText ? `\n【引入参考世界书设定数据】\n${worldbookText}` 
 姓名/昵称: ${charName}
 对手身份背景: ${config.charBg || "攻略对象"}
 完整人设性格参考: ${character.persona || character.bio || "无"}
+
+【主视角人称约束】
+在本次互动所有的场景演进、旁白对话以及内心描写叙述中，必须严格执行以下人称视角规定：
+- 描写玩家 (User: ${userName}) 行动、对话与遭遇时，主视角人称必须为：${PRONOUN_MAP[config.userPronoun || 'second']}。
+- 描写对手 (Character: ${charName}) 行动、对话与遭遇时，主视角人称必须为：${PRONOUN_MAP[config.charPronoun || 'third']}。
+请你在推进世界和叙述对白时，绝对遵守这一人称语法规范！
 
 【游戏核心规则】
 1. 这是一场回合制互动。你负责扮演对手角色（${charName}）以及周围的世界环境（作为GM）。
@@ -934,7 +1004,7 @@ ${worldbookText ? `\n【引入参考世界书设定数据】\n${worldbookText}` 
     }
   }
 
-  // 渲染配置表单
+  // 渲染：配置表单 (添加了人称控制项与自定义命名分栏)
   async function renderSetupForm(container, roche) {
     const setupDiv = document.getElementById("db-setup-view");
     showLoading("加载人设与设定数据...");
@@ -984,6 +1054,12 @@ ${worldbookText ? `\n【引入参考世界书设定数据】\n${worldbookText}` 
     setupDiv.innerHTML = `
       <div class="scroll-content">
         <div class="form-card">
+          <!-- 15字以内副本名称配置 -->
+          <div class="form-group">
+            <label>副本名称 (15字以内)</label>
+            <input type="text" id="db-session-name" maxlength="15" placeholder="例如：夕阳下的教室 (留空则自动生成)" value="${escapeHtml(cachedConfig.sessionName || '')}">
+          </div>
+
           <div class="form-row">
             <div class="form-group">
               <label>选择你的 User 人设</label>
@@ -995,6 +1071,26 @@ ${worldbookText ? `\n【引入参考世界书设定数据】\n${worldbookText}` 
               <label>选择攻略的 Character 角色</label>
               <select id="db-char-select">
                 ${chars.map(c => `<option value="${c.id}" ${cachedConfig.charId === c.id ? 'selected' : ''}>${escapeHtml(c.handle || c.name)}</option>`).join("")}
+              </select>
+            </div>
+          </div>
+
+          <!-- 人称配置栏：支持分栏控制 [3] -->
+          <div class="form-row">
+            <div class="form-group">
+              <label>User 人称 (你的视角)</label>
+              <select id="db-user-pronoun">
+                <option value="first" ${cachedConfig.userPronoun === 'first' ? 'selected' : ''}>第一人称 (我)</option>
+                <option value="second" ${cachedConfig.userPronoun === 'second' || !cachedConfig.userPronoun ? 'selected' : ''}>第二人称 (你)</option>
+                <option value="third" ${cachedConfig.userPronoun === 'third' ? 'selected' : ''}>第三人称 (名字/他/她)</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Char 人称 (对方的视角)</label>
+              <select id="db-char-pronoun">
+                <option value="first" ${cachedConfig.charPronoun === 'first' ? 'selected' : ''}>第一人称 (我)</option>
+                <option value="second" ${cachedConfig.charPronoun === 'second' ? 'selected' : ''}>第二人称 (你)</option>
+                <option value="third" ${cachedConfig.charPronoun === 'third' || !cachedConfig.charPronoun ? 'selected' : ''}>第三人称 (名字/他/她)</option>
               </select>
             </div>
           </div>
@@ -1018,7 +1114,7 @@ ${worldbookText ? `\n【引入参考世界书设定数据】\n${worldbookText}` 
 
           <div class="form-group">
             <label>世界背景简介 (初始情境描述)</label>
-            <textarea id="db-world-intro" placeholder="例如：我们在放学后的夕阳教室里，因为被反锁在内不得不共处一室...">${escapeHtml(cachedConfig.worldIntro || '')}</textarea>
+            <textarea id="db-world-intro" placeholder="例如：我们在放学后的夕阳教室里...">${escapeHtml(cachedConfig.worldIntro || '')}</textarea>
           </div>
 
           <div class="form-row">
@@ -1041,7 +1137,7 @@ ${worldbookText ? `\n【引入参考世界书设定数据】\n${worldbookText}` 
 
           <div class="btn-submit-container">
             <button class="db-btn db-btn-pri" id="db-start-btn" style="flex: 1;">
-              ${SVGS.plus} 开启新的大作战副本
+              ${SVGS.plus} 开启大作战副本
             </button>
           </div>
         </div>
@@ -1053,7 +1149,7 @@ ${worldbookText ? `\n【引入参考世界书设定数据】\n${worldbookText}` 
     };
   }
 
-  // 渲染我的副本列表
+  // 渲染副本列表
   async function renderSessionList(container, roche) {
     const setupDiv = document.getElementById("db-setup-view");
     showLoading("加载副本列表中...");
@@ -1119,10 +1215,10 @@ ${worldbookText ? `\n【引入参考世界书设定数据】\n${worldbookText}` 
           await deleteSession(container, roche, id);
         });
       };
-    }); // 修复了这里的 }); 语法错误
+    });
   }
 
-  // 主程序注册
+  // 主程序生命周期
   window.RochePlugin.register({
     id: "date-battle",
     name: "约会大作战",
@@ -1135,6 +1231,8 @@ ${worldbookText ? `\n【引入参考世界书设定数据】\n${worldbookText}` 
         iconImage: "",
         async mount(container, roche) {
           injectStyles();
+          
+          // 顶栏重新排版，并追加了“退出插件返回宿主桌面”的返回主页面按钮 [1, 2]
           container.innerHTML = `
             <div class="roche-plugin-date-battle">
               <div class="db-navbar">
@@ -1142,8 +1240,9 @@ ${worldbookText ? `\n【引入参考世界书设定数据】\n${worldbookText}` 
                   ${SVGS.heart} 约会大作战
                 </div>
                 <div class="db-tabs">
-                  <button class="db-tab active" id="db-nav-new-btn">${SVGS.plus} 新建大作战</button>
-                  <button class="db-tab" id="db-nav-list-btn">${SVGS.folder} 我的副本</button>
+                  <button class="db-tab active" id="db-nav-new-btn" title="新建大作战">${SVGS.plus}</button>
+                  <button class="db-tab" id="db-nav-list-btn" title="副本管理列表">${SVGS.folder}</button>
+                  <button class="db-tab" id="db-nav-close-btn" title="退出并返回主页面">${SVGS.logout}</button>
                 </div>
               </div>
 
@@ -1162,6 +1261,11 @@ ${worldbookText ? `\n【引入参考世界书设定数据】\n${worldbookText}` 
           };
           document.getElementById("db-nav-list-btn").onclick = async () => {
             await switchView(container, roche, "list");
+          };
+          
+          // 返回宿主主页面按钮事件 [2]
+          document.getElementById("db-nav-close-btn").onclick = () => {
+            roche.ui.closeApp();
           };
 
           const lastActiveSess = await roche.storage.get("date_battle_current_session_id");
