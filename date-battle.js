@@ -313,6 +313,14 @@
       .roche-plugin-date-battle .db-btn-sec:hover {
         background: var(--db-border);
       }
+      .roche-plugin-date-battle .db-btn-danger {
+        background: #fee2e2;
+        color: #b91c1c;
+        border: 1px solid #fca5a5;
+      }
+      .roche-plugin-date-battle .db-btn-danger:hover {
+        background: #fca5a5;
+      }
 
       /* 聊天面板 */
       .roche-plugin-date-battle .chat-container {
@@ -551,7 +559,7 @@
     };
   }
 
-  // 美观的自建编辑对话框 [4]
+  // 美观的自建编辑对话框
   function showEditModal(container, absIdx, currentText, onSave) {
     const root = container.querySelector(".roche-plugin-date-battle") || container;
     const exist = root.querySelector(".db-modal-overlay");
@@ -606,7 +614,7 @@
       .replace(/'/g, "&#039;");
   }
 
-  // 极简消息渲染，只保留左右和背景（绑定 absoluteIdx 避免位置错位） [1]
+  // 极简消息渲染，只保留左右和背景（绑定 absoluteIdx 避免位置错位）
   function renderHistory(chatContainer, history, charName, userName) {
     chatContainer.innerHTML = history.map((msg, absoluteIdx) => {
       // 过滤大作战初始化的第一条首发提示词
@@ -625,7 +633,7 @@
     chatContainer.scrollTop = chatContainer.scrollHeight;
   }
 
-  // 5. 游戏主会话（增加了双击气泡事件委托、悬浮编辑重回菜单） [1]
+  // 5. 游戏主会话（增加了双击气泡事件委托、悬浮编辑重回菜单）
   function renderGameView(container, roche, config, history, systemPrompt, character, userPersona, sessionId) {
     switchView(container, roche, "game");
     const gameDiv = document.getElementById("db-game-view");
@@ -732,7 +740,7 @@
       };
     }
 
-    // “重回此节点”核心逻辑调度 [4]
+    // “重回此节点”核心逻辑调度
     function handleRewind(absIdx) {
       showCustomConfirm(container, "重回此节点？", "重回该节点将彻底清除此条消息以及之下的全部对话记录。系统将以此节点作为新时间线向 AI 重新请求演绎。", async () => {
         showLoading("正在重组时间轴并重新演绎...");
@@ -1265,7 +1273,7 @@ ${charactersDetailsText}
 由于有多位角色同时处于剧本中，你作为优秀的 GM，必须合理、艺术化地调度每一回合各角色的表现，杜绝僵硬感，严格遵循以下群像守则：
 1. **交替高光，杜绝单一垄断**：不能让其中某一个角色持续占领上风、霸占全部台词或完全主控全局。必须顺应剧情演化逻辑，交替给予不同角色亮眼展现、特写反应或细腻心理描写的空间。
 2. **克制出场，严禁雨露均沾**：在单回合的回复中，**严禁为了照顾所有人而强行让每个角色都站出来说一遍话或行动一遍**（严禁“拉出来溜一圈”）。每回合请仅调度当前场景细节、物理站位、以及情感纠葛上最合理、最符合逻辑的 **1-2 位角色** 进行实质性的高光发言、肢体互动或表态。其余未被挑中的角色则在一旁作为背景衬托，甚至暂时离开当前特写区域，维持修罗场张弛有度、错落有致的影视级观感。
-3. **演绎指向明确**：由于去除了外部聊天气泡名称，你在对白和叙述中必须通过文字细节（神态描写、在台词中融入特征词或明确写明人物A、人物B的名字）交代清楚是哪位角色正在动作和发言，防止玩家产生阅读疑惑。
+3. **演绎指向明确**：由于去成了外部聊天气泡名称，你在对白和叙述中必须通过文字细节（神态描写、在台词中融入特征词或明确写明人物A、人物B的名字）交代清楚是哪位角色正在动作和发言，防止玩家产生阅读疑惑。
 4. 你的每一回合回复文本长度（包含对白与描述）必须严格限制在 [${config.wordMin}] 字 到 [${config.wordMax}] 字 的区间内，不得太短，也不得超限。
 5. 绝不要替玩家（User）做出任何选择或擅自说出玩家的台词。
 6. 保持绝对的角色沉浸，严禁跳戏，严禁提及你是AI或这只是程序。
@@ -1433,6 +1441,36 @@ ${charactersDetailsText}
     document.getElementById("db-start-btn").onclick = async () => {
       await createNewGame(container, roche);
     };
+  }
+
+  // 删除副本的核心逻辑实现
+  async function deleteSession(container, roche, sessionId) {
+    showLoading("正在删除副本...");
+    try {
+      // 1. 获取并过滤保存的副本目录
+      let sessions = await roche.storage.get("date_battle_sessions") || [];
+      sessions = sessions.filter(s => s.id !== sessionId);
+      await roche.storage.set("date_battle_sessions", sessions);
+
+      // 2. 清理底层存储对应的配置和聊天记录数据，释放存储空间
+      await roche.storage.set(`db_session_config_${sessionId}`, null);
+      await roche.storage.set(`db_session_history_${sessionId}`, null);
+
+      // 3. 判断如果被删除的正好是当前在玩的副本，将激活副本状态重置
+      const currentActive = await roche.storage.get("date_battle_current_session_id");
+      if (currentActive === sessionId) {
+        await roche.storage.set("date_battle_current_session_id", null);
+      }
+
+      roche.ui.toast("删除成功");
+    } catch (err) {
+      console.error("删除副本失败:", err);
+      roche.ui.toast("删除失败: " + err.message);
+    } finally {
+      hideLoading();
+      // 4. 重绘列表UI
+      await renderSessionList(container, roche);
+    }
   }
 
   // 渲染我的副本列表
