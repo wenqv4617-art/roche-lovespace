@@ -340,12 +340,7 @@
         align-self: flex-start;
         align-items: flex-start;
       }
-      .roche-plugin-date-battle .msg-sender {
-        font-size: 11px;
-        font-weight: 600;
-        color: var(--db-text-muted);
-        margin-bottom: 4px;
-      }
+      /* 移除了气泡题头样式 msg-sender [1] */
       .roche-plugin-date-battle .msg-bubble {
         padding: 10px 14px;
         border-radius: 12px;
@@ -545,6 +540,7 @@
       .replace(/'/g, "&#039;");
   }
 
+  // 对话气泡极简渲染：只用左右和颜色区分，无发送人题头 [1]
   function renderHistory(chatContainer, history, charName, userName) {
     const displayHistory = history.filter((msg, idx) => {
       return !(idx === 0 && msg.role === "user" && msg.content.includes("第一回合"));
@@ -552,11 +548,9 @@
 
     chatContainer.innerHTML = displayHistory.map(msg => {
       const isUser = msg.role === "user";
-      const sender = isUser ? userName : charName;
       const bubbleClass = isUser ? "user" : "char";
       return `
         <div class="msg-wrapper ${bubbleClass}">
-          <div class="msg-sender">${sender}</div>
           <div class="msg-bubble">${escapeHtml(msg.content)}</div>
         </div>
       `;
@@ -565,13 +559,12 @@
     chatContainer.scrollTop = chatContainer.scrollHeight;
   }
 
-  // 4. 渲染：游戏副本视角 (全 SVG 控制，顶栏优化)
+  // 4. 渲染：游戏副本视角
   function renderGameView(container, roche, config, history, systemPrompt, character, userPersona, sessionId) {
     switchView(container, roche, "game");
     const gameDiv = document.getElementById("db-game-view");
 
     const userName = userPersona.handle || userPersona.name || "你";
-    const charName = character.handle || character.name || "对手";
 
     gameDiv.innerHTML = `
       <div class="game-header">
@@ -598,7 +591,7 @@
     `;
 
     const chatContainer = document.getElementById("db-chat-container");
-    renderHistory(chatContainer, history, charName, userName);
+    renderHistory(chatContainer, history, "", userName);
 
     document.getElementById("db-game-back").onclick = () => {
       switchView(container, roche, "list");
@@ -647,7 +640,7 @@
       showLoading("对方正在组织下一步动作...");
 
       history.push({ role: "user", content: text });
-      renderHistory(chatContainer, history, charName, userName);
+      renderHistory(chatContainer, history, "", userName);
       textarea.value = "";
 
       await roche.storage.set(`db_session_history_${sessionId}`, history);
@@ -673,13 +666,13 @@
         history.push({ role: "assistant", content: replyContent });
         await roche.storage.set(`db_session_history_${sessionId}`, history);
 
-        renderHistory(chatContainer, history, charName, userName);
+        renderHistory(chatContainer, history, "", userName);
       } catch(e) {
         console.error(e);
         roche.ui.toast("AI 沟通中断，原因：" + (e.message || "未知") + "。数据已在本地保存，您可以重试。");
         history.pop();
         await roche.storage.set(`db_session_history_${sessionId}`, history);
-        renderHistory(chatContainer, history, charName, userName);
+        renderHistory(chatContainer, history, "", userName);
       } finally {
         textarea.disabled = false;
         sendBtn.disabled = false;
@@ -722,15 +715,21 @@
     }
   }
 
-  // 新建大作战副本核心链路
+  // 新建大作战副本核心链路（支持 1v1 与 Multiplayer 多套演绎 Prompt 动态调度） [3]
   async function createNewGame(container, roche) {
     try {
       const userEl = document.getElementById("db-user-select");
-      const charEl = document.getElementById("db-char-select");
-      if (!userEl || !charEl) throw new Error("页面载入异常，请刷新重试");
+      if (!userEl) throw new Error("页面载入异常，请刷新重试");
+
+      const selectedCharElements = document.querySelectorAll('input[name="db-char-category"]:checked');
+      const selectedCharIds = Array.from(selectedCharElements).map(el => el.value);
+
+      if (selectedCharIds.length === 0) {
+        roche.ui.toast("请至少勾选一个攻略角色！");
+        return;
+      }
 
       const userId = userEl.value;
-      const charId = charEl.value;
       const sessionNameInput = document.getElementById("db-session-name").value.trim();
       const worldType = document.getElementById("db-world-type").value.trim() || "现代校园";
       const wordMin = parseInt(document.getElementById("db-word-min").value, 10) || 150;
@@ -749,14 +748,10 @@
         return;
       }
 
-      // 处理副本命名，限制为 15 字符以内 [1]
-      let displaySessionName = sessionNameInput || `大作战副本_${Date.now().toString(36).toUpperCase()}`;
-      displaySessionName = displaySessionName.substring(0, 15);
-
       const config = { 
         userId, 
-        charId, 
-        sessionName: displaySessionName, 
+        charIds: selectedCharIds, // 更新为多选保存数组 [3]
+        sessionName: sessionNameInput, 
         worldType, 
         wordMin, 
         wordMax, 
@@ -769,28 +764,48 @@
       };
       
       await roche.storage.set("date_battle_last_config", config);
-      showLoading("正在同步系统人设并构建开局舞台描述...");
+      showLoading("正在同步多角色人设并构建开局修罗场描述...");
 
       let userPersona = null;
-      let character = null;
+      let selectedCharacters = [];
+      let allChars = [];
+
       try {
+        allChars = await roche.character.list() || [];
         const users = await roche.persona.getUserPersonas() || [];
         userPersona = users.find(u => u.id === userId);
-        if (roche.character && typeof roche.character.get === 'function') {
-          character = await roche.character.get(charId);
-        } else {
-          const chars = await roche.character.list() || [];
-          character = chars.find(c => c.id === charId);
+
+        for (const cid of selectedCharIds) {
+          let charItem = null;
+          try {
+            if (roche.character && typeof roche.character.get === 'function') {
+              charItem = await roche.character.get(cid);
+            } else {
+              charItem = allChars.find(c => c.id === cid);
+            }
+          } catch(e) {
+            charItem = allChars.find(c => c.id === cid);
+          }
+          if (charItem) selectedCharacters.push(charItem);
         }
       } catch (e) {
-        console.warn("加载核心人物报错，尝试降级", e);
-        const chars = await roche.character.list() || [];
-        character = chars.find(c => c.id === charId);
+        console.warn("加载核心人物报错，尝试列表兜底", e);
       }
 
-      if (!userPersona || !character) {
-        throw new Error("加载人物数据失败，请确保宿主已预设角色和人设");
+      if (!userPersona || selectedCharacters.length === 0) {
+        throw new Error("加载人设或角色数据失败，请确保宿主已预设角色和人设");
       }
+
+      // 提取所有选定角色的名字
+      const charNames = selectedCharacters.map(c => c.handle || c.name || "角色").join("、");
+
+      // 自动补齐副本默认名称，限制在 15 字符内
+      let displaySessionName = sessionNameInput;
+      if (!displaySessionName) {
+        displaySessionName = selectedCharacters.length > 1 ? `与${selectedCharacters[0].handle || selectedCharacters[0].name}等人的乱斗` : `与${selectedCharacters[0].handle || selectedCharacters[0].name}的约会`;
+      }
+      displaySessionName = displaySessionName.substring(0, 15);
+      config.sessionName = displaySessionName;
 
       let worldbookText = "";
       if (selectedWbs.length > 0) {
@@ -807,10 +822,15 @@
       }
 
       const userName = userPersona.handle || userPersona.name || "玩家";
-      const charName = character.handle || character.name || "角色";
 
-      // 精确融入用户配置的用户人称与角色人称约束 [3]
-      const systemPrompt = `
+      // 4. 核心调度：1v1 单人模式与多人修罗场模式的多套演绎 Prompt 分流控制 [3]
+      let systemPrompt = "";
+
+      if (selectedCharacters.length === 1) {
+        // == 1v1 单纯恋爱剧本 Prompt ==
+        const character = selectedCharacters[0];
+        const charName = character.handle || character.name;
+        systemPrompt = `
 你是一个优秀的 TRPG 主持人（GM）兼角色扮演者。当前正在进行一场名为《约会大作战》的回合制文字恋爱冒险游戏。
 
 【世界设定】
@@ -830,18 +850,60 @@ ${worldbookText ? `\n【引入参考世界书设定数据】\n${worldbookText}` 
 
 【主视角人称约束】
 在本次互动所有的场景演进、旁白对话以及内心描写叙述中，必须严格执行以下人称视角规定：
-- 描写玩家 (User: ${userName}) 行动、对话与遭遇时，主视角人称必须为：${PRONOUN_MAP[userPronoun]}。
-- 描写对手 (Character: ${charName}) 行动、对话与遭遇时，主视角人称必须为：${PRONOUN_MAP[charPronoun]}。
+- 描写玩家 (User: ${userName}) 行动、对话与遭遇时，主视角人称必须为：${PRONOUN_MAP[userPronoun || 'second']}。
+- 描写对手 (Character: ${charName}) 行动、对话与遭遇时，主视角人称必须为：${PRONOUN_MAP[charPronoun || 'third']}。
 请你在推进世界和叙述对白时，绝对遵守这一人称语法规范！
 
 【游戏核心规则】
-1. 这是一场回合制互动。你负责扮演对手角色（${charName}）以及周围的世界环境（作为GM）。
+1. 这是一场 1v1 约会恋爱剧本。你负责扮演对手角色（${charName}）以及周围的世界环境（作为GM）。
 2. 你的每一次回复必须高度符合该角色的性格特色、言行习惯，并切合当前的世界画风。
 3. 你的每一回合回复文本长度（包含对白与描述）必须严格限制在 [${wordMin}] 字 到 [${wordMax}] 字 的区间内，不得太短，也不得超限。
 4. 在回复中：你需要描述对方角色的动作、对话和心理活动，同时描绘环境的变化，最后留出空间等待玩家（User）采取下一步行动。
 5. 绝不要替玩家（User）做出任何选择或擅自说出玩家的台词。
 6. 保持绝对的角色沉浸，严禁跳戏，严禁提及你是AI或这只是程序。
 `;
+      } else {
+        // == 多人多角修罗场群像 Prompt ==
+        const charactersDetailsText = selectedCharacters.map((c, i) => `
+角色 ${i+1}: ${c.handle || c.name}
+身份定位: ${charBg || "攻略对象/参与者"}
+完整人设与性格风格参考: ${c.persona || c.bio || "无"}
+        `).join("\n");
+
+        systemPrompt = `
+你是一个优秀的 TRPG 主持人（GM）兼多角色演播者。当前正在进行一场名为《约会大作战》的多人回合制文字群像冒险/修罗场恋爱游戏。
+
+【世界设定】
+世界类型/画风: ${worldType}
+场景起因与背景介绍: ${worldIntro || "一次多角邂逅的修罗场"}
+${worldbookText ? `\n【引入参考世界书设定数据】\n${worldbookText}` : ''}
+
+【玩家信息 (User)】
+姓名/昵称: ${userName}
+玩家身份背景: ${userBg || "普通参与者"}
+完整人设性格参考: ${userPersona.persona || userPersona.bio || "无"}
+
+【多位参与角色 (Characters)】
+当前共有 ${selectedCharacters.length} 位角色同时参与这场对战/约会：${charNames}。
+具体各角色设定信息如下：
+${charactersDetailsText}
+
+【主视角人称约束】
+在本次互动所有的场景演进、旁白对话以及内心描写叙述中，必须严格执行以下人称视角规定：
+- 描写玩家 (User: ${userName}) 行动、对话与遭遇时，主视角人称必须为：${PRONOUN_MAP[userPronoun || 'second']}。
+- 描写所有对手角色（${charNames}）行动与对白时，主视角人称必须为：${PRONOUN_MAP[charPronoun || 'third']}。
+请在演绎中绝对遵守这一人称语法规范！
+
+【多人模式黄金调度法则】
+由于有多位角色同时处于剧本中，你作为优秀的 GM，必须合理、艺术化地调度每一回合各角色的表现，杜绝僵硬感，严格遵循以下群像守则：
+1. **交替高光，杜绝单一垄断**：不能让其中某一个角色持续占领上风、霸占全部台词或完全主控全局。必须顺应剧情演化逻辑，交替给予不同角色亮眼展现、特写反应或细腻心理描写的空间。
+2. **克制出场，严禁雨露均沾**：在单回合的回复中，**严禁为了照顾所有人而强行让每个角色都站出来说一遍话或行动一遍**（严禁“拉出来溜一圈”）。每回合请仅调度当前场景细节、物理站位、以及情感纠葛上最合理、最符合逻辑的 **1-2 位角色** 进行实质性的高光发言、肢体互动或表态。其余未被挑中的角色则在一旁作为背景衬托，甚至暂时离开当前特写区域，维持修罗场张弛有度、错落有致的影视级观感。
+3. **演绎指向明确**：由于去除了外部聊天气泡名称，你在对白和叙叙述中必须通过文字细节（神态描写、在台词中融入特征词或明确写明人物A、人物B的名字）交代清楚是哪位角色正在动作和发言，防止玩家产生阅读疑惑。
+4. 你的每一回合回复文本长度（包含对白与描述）必须严格限制在 [${wordMin}] 字 到 [${wordMax}] 字 的区间内，不得太短，也不得超限。
+5. 绝不要替玩家（User）做出任何选择或擅自说出玩家的台词。
+6. 保持绝对的角色沉浸，严禁跳戏，严禁提及你是AI或这只是程序。
+`;
+      }
 
       const openingPrompt = "请开启《约会大作战》的第一回合。作为主持人和对手，描述我们当前所处的具体场景、你的出场状态、并向我（玩家）打个招呼作为开端，等待我的第一步自由行动。";
       let initialReply = "";
@@ -868,7 +930,7 @@ ${worldbookText ? `\n【引入参考世界书设定数据】\n${worldbookText}` 
         id: sessionId,
         name: displaySessionName,
         worldType,
-        characterName: charName,
+        characterName: charNames, // 外显多名组合
         userName,
         createdAt: Date.now()
       };
@@ -882,7 +944,7 @@ ${worldbookText ? `\n【引入参考世界书设定数据】\n${worldbookText}` 
       await roche.storage.set("date_battle_current_session_id", sessionId);
 
       hideLoading();
-      renderGameView(container, roche, config, history, systemPrompt, character, userPersona, sessionId);
+      renderGameView(container, roche, config, history, systemPrompt, selectedCharacters[0], userPersona, sessionId);
 
     } catch (fatalError) {
       hideLoading();
@@ -901,25 +963,38 @@ ${worldbookText ? `\n【引入参考世界书设定数据】\n${worldbookText}` 
       if (!config || !history) throw new Error("该副本数据已损坏或不存在");
 
       let userPersona = null;
-      let character = null;
+      let selectedCharacters = [];
+      let chars = [];
 
       try {
+        chars = await roche.character.list() || [];
         const users = await roche.persona.getUserPersonas() || [];
         userPersona = users.find(u => u.id === config.userId);
-        if (roche.character && typeof roche.character.get === 'function') {
-          character = await roche.character.get(config.charId);
-        } else {
-          const chars = await roche.character.list() || [];
-          character = chars.find(c => c.id === config.charId);
+
+        // 兼容处理老版本 1v1 的单选 charId 与新版本多选 charIds [3]
+        const activeCharIds = config.charIds || (config.charId ? [config.charId] : []);
+        for (const cid of activeCharIds) {
+          let charItem = null;
+          try {
+            if (roche.character && typeof roche.character.get === 'function') {
+              charItem = await roche.character.get(cid);
+            } else {
+              charItem = chars.find(c => c.id === cid);
+            }
+          } catch(e) {
+            charItem = chars.find(c => c.id === cid);
+          }
+          if (charItem) selectedCharacters.push(charItem);
         }
       } catch (e) {
-        const chars = await roche.character.list() || [];
-        character = chars.find(c => c.id === config.charId);
+        console.warn(e);
       }
 
-      if (!userPersona || !character) {
+      if (!userPersona || selectedCharacters.length === 0) {
         throw new Error("人设或角色未找到，可能已被宿主系统移除");
       }
+
+      const charNames = selectedCharacters.map(c => c.handle || c.name || "角色").join("、");
 
       let worldbookText = "";
       if (config.worldbooks && config.worldbooks.length > 0) {
@@ -936,10 +1011,14 @@ ${worldbookText ? `\n【引入参考世界书设定数据】\n${worldbookText}` 
       }
 
       const userName = userPersona.handle || userPersona.name || "玩家";
-      const charName = character.handle || character.name || "角色";
 
-      // 组装带有自定义人称约束的指令
-      const systemPrompt = `
+      // 4. 重建 Prompt 调度
+      let systemPrompt = "";
+
+      if (selectedCharacters.length === 1) {
+        const character = selectedCharacters[0];
+        const charName = character.handle || character.name;
+        systemPrompt = `
 你是一个优秀的 TRPG 主持人（GM）兼角色扮演者。当前正在进行一场名为《约会大作战》的回合制文字恋爱冒险游戏。
 
 【世界设定】
@@ -964,17 +1043,58 @@ ${worldbookText ? `\n【引入参考世界书设定数据】\n${worldbookText}` 
 请你在推进世界和叙述对白时，绝对遵守这一人称语法规范！
 
 【游戏核心规则】
-1. 这是一场回合制互动。你负责扮演对手角色（${charName}）以及周围的世界环境（作为GM）。
+1. 这是一场 1v1 约会恋爱剧本。你负责扮演对手角色（${charName}）以及周围的世界环境（作为GM）。
 2. 你的每一次回复必须高度符合该角色的性格特色、言行习惯，并切合当前的世界画风。
 3. 你的每一回合回复文本长度（包含对白与描述）必须严格限制在 [${config.wordMin}] 字 到 [${config.wordMax}] 字 的区间内，不得太短，也不得超限。
 4. 在回复中：你需要描述对方角色的动作、对话和心理活动，同时描绘环境的变化，最后留出空间等待玩家（User）采取下一步行动。
 5. 绝不要替玩家（User）做出任何选择或擅自说出玩家的台词。
 6. 保持绝对的角色沉浸，严禁跳戏，严禁提及你是AI或这只是程序。
 `;
+      } else {
+        const charactersDetailsText = selectedCharacters.map((c, i) => `
+角色 ${i+1}: ${c.handle || c.name}
+身份定位: ${config.charBg || "攻略对象/参与者"}
+完整人设与性格风格参考: ${c.persona || c.bio || "无"}
+        `).join("\n");
+
+        systemPrompt = `
+你是一个优秀的 TRPG 主持人（GM）兼多角色演播者。当前正在进行一场名为《约会大作战》的多人回合制文字群像冒险/修罗场恋爱游戏。
+
+【世界设定】
+世界类型/画风: ${config.worldType}
+场景起因与背景介绍: ${config.worldIntro || "一次多角邂逅的修罗场"}
+${worldbookText ? `\n【引入参考世界书设定数据】\n${worldbookText}` : ''}
+
+【玩家信息 (User)】
+姓名/昵称: ${userName}
+玩家身份背景: ${config.userBg || "普通参与者"}
+完整人设性格参考: ${userPersona.persona || userPersona.bio || "无"}
+
+【多位参与角色 (Characters)】
+当前共有 ${selectedCharacters.length} 位角色同时参与这场对战/约会：${charNames}。
+具体各角色设定信息如下：
+${charactersDetailsText}
+
+【主视角人称约束】
+在本次互动所有的场景演进、旁白对话以及内心描写叙述中，必须严格执行以下人称视角规定：
+- 描写玩家 (User: ${userName}) 行动、对话与遭遇时，主视角人称必须为：${PRONOUN_MAP[config.userPronoun || 'second']}。
+- 描写所有对手角色（${charNames}）行动与对白时，主视角人称必须为：${PRONOUN_MAP[config.charPronoun || 'third']}。
+请在演绎中绝对遵守这一人称语法规范！
+
+【多人模式黄金调度法则】
+由于有多位角色同时处于剧本中，你作为优秀的 GM，必须合理、艺术化地调度每一回合各角色的表现，杜绝僵硬感，严格遵循以下群像守则：
+1. **交替高光，杜绝单一垄断**：不能让其中某一个角色持续占领上风、霸占全部台词或完全主控全局。必须顺应剧情演化逻辑，交替给予不同角色亮眼展现、特写反应或细腻心理描写的空间。
+2. **克制出场，严禁雨露均沾**：在单回合的回复中，**严禁为了照顾所有人而强行让每个角色都站出来说一遍话或行动一遍**（严禁“拉出来溜一圈”）。每回合请仅调度当前场景细节、物理站位、以及情感纠葛上最合理、最符合逻辑的 **1-2 位角色** 进行实质性的高光发言、肢体互动或表态。其余未被挑中的角色则在一旁作为背景衬托，甚至暂时离开当前特写区域，维持修罗场张弛有度、错落有致的影视级观感。
+3. **演绎指向明确**：由于去除了外部聊天气泡名称，你在对白和叙述中必须通过文字细节（神态描写、在台词中融入特征词或明确写明人物A、人物B的名字）交代清楚是哪位角色正在动作和发言，防止玩家产生阅读疑惑。
+4. 你的每一回合回复文本长度（包含对白与描述）必须严格限制在 [${config.wordMin}] 字 到 [${config.wordMax}] 字 的区间内，不得太短，也不得超限。
+5. 绝不要替玩家（User）做出任何选择或擅自说出玩家的台词。
+6. 保持绝对的角色沉浸，严禁跳戏，严禁提及你是AI或这只是程序。
+`;
+      }
 
       await roche.storage.set("date_battle_current_session_id", sessionId);
       hideLoading();
-      renderGameView(container, roche, config, history, systemPrompt, character, userPersona, sessionId);
+      renderGameView(container, roche, config, history, systemPrompt, selectedCharacters[0], userPersona, sessionId);
 
     } catch (e) {
       hideLoading();
@@ -1004,7 +1124,7 @@ ${worldbookText ? `\n【引入参考世界书设定数据】\n${worldbookText}` 
     }
   }
 
-  // 渲染：配置表单 (添加了人称控制项与自定义命名分栏)
+  // 渲染配置表单 (攻略角色修改为了多选列表) [3]
   async function renderSetupForm(container, roche) {
     const setupDiv = document.getElementById("db-setup-view");
     showLoading("加载人设与设定数据...");
@@ -1041,6 +1161,18 @@ ${worldbookText ? `\n【引入参考世界书设定数据】\n${worldbookText}` 
 
     const cachedConfig = await roche.storage.get("date_battle_last_config") || {};
 
+    // 拼装 Character 攻略角色多选列表 [3]
+    const charListHtml = chars.map(c => {
+      // 兼容可能遗留的老配置单选 charId 或新配置数组 charIds
+      const isChecked = (cachedConfig.charIds || []).includes(c.id) || (cachedConfig.charId === c.id) ? "checked" : "";
+      return `
+        <label class="worldbook-item">
+          <input type="checkbox" name="db-char-category" value="${c.id}" ${isChecked}>
+          <span>${escapeHtml(c.handle || c.name)}</span>
+        </label>
+      `;
+    }).join("") || `<span style="color: var(--db-text-muted); font-size:12px;">暂无可用角色</span>`;
+
     const wbHtml = worldbookCategories.map(cat => {
       const isChecked = (cachedConfig.worldbooks || []).includes(cat.id) ? "checked" : "";
       return `
@@ -1054,10 +1186,9 @@ ${worldbookText ? `\n【引入参考世界书设定数据】\n${worldbookText}` 
     setupDiv.innerHTML = `
       <div class="scroll-content">
         <div class="form-card">
-          <!-- 15字以内副本名称配置 -->
           <div class="form-group">
             <label>副本名称 (15字以内)</label>
-            <input type="text" id="db-session-name" maxlength="15" placeholder="例如：夕阳下的教室 (留空则自动生成)" value="${escapeHtml(cachedConfig.sessionName || '')}">
+            <input type="text" id="db-session-name" maxlength="15" placeholder="例如：夕阳下的修罗场 (留空则自动生成)" value="${escapeHtml(cachedConfig.sessionName || '')}">
           </div>
 
           <div class="form-row">
@@ -1067,15 +1198,14 @@ ${worldbookText ? `\n【引入参考世界书设定数据】\n${worldbookText}` 
                 ${users.map(u => `<option value="${u.id}" ${cachedConfig.userId === u.id ? 'selected' : ''}>${escapeHtml(u.handle || u.name)}</option>`).join("")}
               </select>
             </div>
-            <div class="form-group">
-              <label>选择攻略的 Character 角色</label>
-              <select id="db-char-select">
-                ${chars.map(c => `<option value="${c.id}" ${cachedConfig.charId === c.id ? 'selected' : ''}>${escapeHtml(c.handle || c.name)}</option>`).join("")}
-              </select>
+            <div class="form-group" style="display:flex; flex-direction:column;">
+              <label>选择攻略的 Character 角色 (支持勾选多位触发多人模式)</label>
+              <div class="worldbook-list" style="flex:1;">
+                ${charListHtml}
+              </div>
             </div>
           </div>
 
-          <!-- 人称配置栏：支持分栏控制 [3] -->
           <div class="form-row">
             <div class="form-group">
               <label>User 人称 (你的视角)</label>
@@ -1149,7 +1279,7 @@ ${worldbookText ? `\n【引入参考世界书设定数据】\n${worldbookText}` 
     };
   }
 
-  // 渲染副本列表
+  // 渲染我的副本列表
   async function renderSessionList(container, roche) {
     const setupDiv = document.getElementById("db-setup-view");
     showLoading("加载副本列表中...");
@@ -1222,7 +1352,7 @@ ${worldbookText ? `\n【引入参考世界书设定数据】\n${worldbookText}` 
   window.RochePlugin.register({
     id: "date-battle",
     name: "约会大作战",
-    version: "1.1.0",
+    version: "1.2.0",
     apps: [
       {
         id: "date-battle-app",
@@ -1232,7 +1362,6 @@ ${worldbookText ? `\n【引入参考世界书设定数据】\n${worldbookText}` 
         async mount(container, roche) {
           injectStyles();
           
-          // 顶栏重新排版，并追加了“退出插件返回宿主桌面”的返回主页面按钮 [1, 2]
           container.innerHTML = `
             <div class="roche-plugin-date-battle">
               <div class="db-navbar">
@@ -1263,7 +1392,6 @@ ${worldbookText ? `\n【引入参考世界书设定数据】\n${worldbookText}` 
             await switchView(container, roche, "list");
           };
           
-          // 返回宿主主页面按钮事件 [2]
           document.getElementById("db-nav-close-btn").onclick = () => {
             roche.ui.closeApp();
           };
