@@ -1,7 +1,7 @@
 (function() {
   const STYLE_ID = "roche-plugin-date-battle-styles";
 
-  // 1. 扁平极简浅色主题样式（顶栏压缩至 48px）
+  // 1. 全局样式注入 (新增了右键/双击菜单和编辑对话框样式)
   function injectStyles() {
     if (document.getElementById(STYLE_ID)) return;
     const style = document.createElement("style");
@@ -55,7 +55,7 @@
         overflow: hidden;
       }
       
-      /* 顶栏压缩至极简的 48px 高度 */
+      /* 顶栏 48px */
       .roche-plugin-date-battle .db-navbar {
         display: flex;
         align-items: center;
@@ -81,7 +81,6 @@
         align-items: center;
       }
       
-      /* 纯图标 Tab/按钮控制 */
       .roche-plugin-date-battle .db-tab {
         width: 32px;
         height: 32px;
@@ -105,7 +104,6 @@
         background: var(--db-primary-light);
       }
       
-      /* 游戏头部极简控制（48px） */
       .roche-plugin-date-battle .game-header {
         padding: 0 16px;
         height: 48px;
@@ -126,7 +124,6 @@
         gap: 4px;
       }
       
-      /* 高级纯图标按钮样式 */
       .roche-plugin-date-battle .db-btn-icon {
         width: 32px;
         height: 32px;
@@ -164,7 +161,7 @@
         background: #fca5a5;
       }
 
-      /* 表单排版布局 */
+      /* 表单与布局 */
       .roche-plugin-date-battle .scroll-content {
         padding: 16px;
         overflow-y: auto;
@@ -244,7 +241,7 @@
         margin-top: 12px;
       }
       
-      /* 存档副本列表 */
+      /* 存档列表 */
       .roche-plugin-date-battle .session-grid {
         display: flex;
         flex-direction: column;
@@ -287,7 +284,7 @@
         gap: 6px;
       }
 
-      /* 主体按钮 */
+      /* 按钮 */
       .roche-plugin-date-battle .db-btn {
         padding: 10px 18px;
         border: none;
@@ -317,7 +314,7 @@
         background: var(--db-border);
       }
 
-      /* 消息对话区域 */
+      /* 聊天面板 */
       .roche-plugin-date-battle .chat-container {
         flex: 1;
         overflow-y: auto;
@@ -331,6 +328,7 @@
         display: flex;
         flex-direction: column;
         max-width: 80%;
+        user-select: none; /* 避免双击时触发浏览器大段选蓝干扰视觉 */
       }
       .roche-plugin-date-battle .msg-wrapper.user {
         align-self: flex-end;
@@ -340,7 +338,6 @@
         align-self: flex-start;
         align-items: flex-start;
       }
-      /* 移除了气泡题头样式 msg-sender [1] */
       .roche-plugin-date-battle .msg-bubble {
         padding: 10px 14px;
         border-radius: 12px;
@@ -349,6 +346,11 @@
         white-space: pre-wrap;
         word-break: break-all;
         box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+        cursor: pointer;
+        transition: transform 0.1s;
+      }
+      .roche-plugin-date-battle .msg-bubble:active {
+        transform: scale(0.98);
       }
       .roche-plugin-date-battle .msg-wrapper.user .msg-bubble {
         background-color: var(--db-user-bubble);
@@ -395,6 +397,39 @@
         background-color: var(--db-primary-hover);
       }
       
+      /* 自定义右键/双击悬浮菜单 */
+      .roche-plugin-date-battle .db-context-menu {
+        position: fixed;
+        background: var(--db-surface);
+        border: 1px solid var(--db-border);
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        padding: 4px 0;
+        z-index: 300;
+        min-width: 130px;
+        display: flex;
+        flex-direction: column;
+        animation: db-menu-pop 0.12s cubic-bezier(0.16, 1, 0.3, 1);
+      }
+      @keyframes db-menu-pop {
+        from { opacity: 0; transform: scale(0.95); }
+        to { opacity: 1; transform: scale(1); }
+      }
+      .roche-plugin-date-battle .db-context-item {
+        padding: 8px 12px;
+        font-size: 13px;
+        cursor: pointer;
+        color: var(--db-text);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        transition: background 0.15s;
+      }
+      .roche-plugin-date-battle .db-context-item:hover {
+        background: var(--db-primary-light);
+        color: var(--db-primary);
+      }
+
       /* 弹窗设计 */
       .roche-plugin-date-battle .db-modal-overlay {
         position: absolute;
@@ -471,7 +506,7 @@
     if (styleTag) styleTag.remove();
   }
 
-  // 2. 纯矢量路径 SVG 图标资源 (不含任何 emoji)
+  // 2. SVG 轻量矢量路径图标 (不含任何 emoji)
   const SVGS = {
     heart: `<svg class="db-svg" viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>`,
     plus: `<svg class="db-svg" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>`,
@@ -481,10 +516,9 @@
     back: `<svg class="db-svg" viewBox="0 0 24 24"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>`,
     logout: `<svg class="db-svg" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>`,
     reset: `<svg class="db-svg" viewBox="0 0 24 24"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>`,
-    home: `<svg class="db-svg" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>`
+    edit: `<svg class="db-svg" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4z"></path></svg>`
   };
 
-  // 3. 人称文本描述映射
   const PRONOUN_MAP = {
     first: "第一人称 (我)",
     second: "第二人称 (你)",
@@ -517,6 +551,38 @@
     };
   }
 
+  // 美观的自建编辑对话框 [4]
+  function showEditModal(container, absIdx, currentText, onSave) {
+    const root = container.querySelector(".roche-plugin-date-battle") || container;
+    const exist = root.querySelector(".db-modal-overlay");
+    if (exist) exist.remove();
+
+    const overlay = document.createElement("div");
+    overlay.className = "db-modal-overlay";
+    overlay.innerHTML = `
+      <div class="db-modal-card" style="max-width: 480px; width: 90%;">
+        <div class="db-modal-title">编辑消息内容</div>
+        <div class="form-group" style="margin-top: 12px; margin-bottom: 16px;">
+          <textarea id="db-edit-textarea" style="min-height: 140px; width:100%; font-size:14px; line-height:1.5;">${escapeHtml(currentText)}</textarea>
+        </div>
+        <div class="db-modal-actions">
+          <button class="db-btn db-btn-sec" id="db-edit-cancel">取消</button>
+          <button class="db-btn db-btn-pri" id="db-edit-save">保存</button>
+        </div>
+      </div>
+    `;
+    root.appendChild(overlay);
+
+    overlay.querySelector("#db-edit-cancel").onclick = () => overlay.remove();
+    overlay.querySelector("#db-edit-save").onclick = () => {
+      const newText = overlay.querySelector("#db-edit-textarea").value.trim();
+      overlay.remove();
+      if (newText) {
+        onSave(newText);
+      }
+    };
+  }
+
   function showLoading(text) {
     const overlay = document.getElementById("db-loading-overlay");
     const loadingText = document.getElementById("db-loading-text");
@@ -540,17 +606,17 @@
       .replace(/'/g, "&#039;");
   }
 
-  // 对话气泡极简渲染：只用左右和颜色区分，无发送人题头 [1]
+  // 极简消息渲染，只保留左右和背景（绑定 absoluteIdx 避免位置错位） [1]
   function renderHistory(chatContainer, history, charName, userName) {
-    const displayHistory = history.filter((msg, idx) => {
-      return !(idx === 0 && msg.role === "user" && msg.content.includes("第一回合"));
-    });
+    chatContainer.innerHTML = history.map((msg, absoluteIdx) => {
+      // 过滤大作战初始化的第一条首发提示词
+      const isOpening = absoluteIdx === 0 && msg.role === "user" && msg.content.includes("第一回合");
+      if (isOpening) return ""; 
 
-    chatContainer.innerHTML = displayHistory.map(msg => {
       const isUser = msg.role === "user";
       const bubbleClass = isUser ? "user" : "char";
       return `
-        <div class="msg-wrapper ${bubbleClass}">
+        <div class="msg-wrapper ${bubbleClass}" data-abs-idx="${absoluteIdx}">
           <div class="msg-bubble">${escapeHtml(msg.content)}</div>
         </div>
       `;
@@ -559,12 +625,13 @@
     chatContainer.scrollTop = chatContainer.scrollHeight;
   }
 
-  // 4. 渲染：游戏副本视角
+  // 5. 游戏主会话（增加了双击气泡事件委托、悬浮编辑重回菜单） [1]
   function renderGameView(container, roche, config, history, systemPrompt, character, userPersona, sessionId) {
     switchView(container, roche, "game");
     const gameDiv = document.getElementById("db-game-view");
 
     const userName = userPersona.handle || userPersona.name || "你";
+    const charName = character.handle || character.name || "对手";
 
     gameDiv.innerHTML = `
       <div class="game-header">
@@ -592,6 +659,127 @@
 
     const chatContainer = document.getElementById("db-chat-container");
     renderHistory(chatContainer, history, "", userName);
+
+    // ==========================================
+    // 新增：双击消息气泡，弹出编辑/回滚菜单逻辑
+    // ==========================================
+    chatContainer.ondblclick = (e) => {
+      const bubble = e.target.closest(".msg-bubble");
+      if (!bubble) return;
+      
+      const wrapper = bubble.closest(".msg-wrapper");
+      if (!wrapper) return;
+
+      const absIdx = parseInt(wrapper.getAttribute("data-abs-idx"), 10);
+      if (isNaN(absIdx)) return;
+
+      e.preventDefault(); // 阻止文字选区
+      openContextMenu(e, absIdx);
+    };
+
+    // 绘制并定位悬浮微型控制单
+    function openContextMenu(e, absIdx) {
+      const exist = document.getElementById("db-bubble-menu");
+      if (exist) exist.remove();
+
+      const menu = document.createElement("div");
+      menu.id = "db-bubble-menu";
+      menu.className = "db-context-menu";
+      menu.style.top = `${e.clientY}px`;
+      menu.style.left = `${e.clientX}px`;
+
+      menu.innerHTML = `
+        <div class="db-context-item" id="db-menu-edit">
+          ${SVGS.edit}
+          <span>编辑内容</span>
+        </div>
+        <div class="db-context-item" id="db-menu-rewind">
+          ${SVGS.reset}
+          <span>重回此节点</span>
+        </div>
+      `;
+
+      const root = container.querySelector(".roche-plugin-date-battle") || container;
+      root.appendChild(menu);
+
+      // 点击外部关闭微型控制单
+      const closeMenu = () => {
+        menu.remove();
+        document.removeEventListener("click", closeMenu);
+      };
+      setTimeout(() => document.addEventListener("click", closeMenu), 0);
+
+      // 菜单项事件：编辑消息
+      menu.querySelector("#db-menu-edit").onclick = (ev) => {
+        ev.stopPropagation();
+        menu.remove();
+        const currentText = history[absIdx].content;
+        
+        showEditModal(container, absIdx, currentText, async (newText) => {
+          history[absIdx].content = newText;
+          await roche.storage.set(`db_session_history_${sessionId}`, history);
+          roche.ui.toast("修改成功");
+          // 重绘确保数据一致性
+          renderGameView(container, roche, config, history, systemPrompt, character, userPersona, sessionId);
+        });
+      };
+
+      // 菜单项事件：时间轴回滚并重构演绎（重回）
+      menu.querySelector("#db-menu-rewind").onclick = (ev) => {
+        ev.stopPropagation();
+        menu.remove();
+        handleRewind(absIdx);
+      };
+    }
+
+    // “重回此节点”核心逻辑调度 [4]
+    function handleRewind(absIdx) {
+      showCustomConfirm(container, "重回此节点？", "重回该节点将彻底清除此条消息以及之下的全部对话记录。系统将以此节点作为新时间线向 AI 重新请求演绎。", async () => {
+        showLoading("正在重组时间轴并重新演绎...");
+        try {
+          let newHistory = [];
+          
+          if (history[absIdx].role === "assistant") {
+            // 回滚 AI (助手) 消息：清除此条以及其之下的全部。剩余最后一项是用户 prompt (absIdx - 1)
+            newHistory = history.slice(0, absIdx);
+          } else {
+            // 回滚玩家 (User) 消息：清除此条以及其之下的全部，并取出该用户的原 prompt 内容作为最新提问重新发送
+            const promptText = history[absIdx].content;
+            newHistory = history.slice(0, absIdx);
+            newHistory.push({ role: "user", content: promptText });
+          }
+
+          // 1. 提交新时间轴状态到本地缓存
+          await roche.storage.set(`db_session_history_${sessionId}`, newHistory);
+
+          // 2. 调度 AI 接口获取新演绎
+          const result = await roche.ai.chat({
+            messages: [
+              { role: "system", content: systemPrompt },
+              ...newHistory
+            ]
+          });
+
+          const replyContent = result && (result.text || result.content);
+          if (!replyContent) throw new Error("大模型未能正常返回演绎文字");
+
+          newHistory.push({ role: "assistant", content: replyContent });
+          await roche.storage.set(`db_session_history_${sessionId}`, newHistory);
+
+          roche.ui.toast("重新演绎成功");
+          hideLoading();
+
+          // 3. 执行单向重渲染，装载全新演绎历史
+          renderGameView(container, roche, config, newHistory, systemPrompt, character, userPersona, sessionId);
+        } catch (err) {
+          hideLoading();
+          console.error("重回失败:", err);
+          roche.ui.toast("重回失败: " + err.message);
+        }
+      });
+    }
+
+    // ==========================================
 
     document.getElementById("db-game-back").onclick = () => {
       switchView(container, roche, "list");
@@ -715,7 +903,7 @@
     }
   }
 
-  // 新建大作战副本核心链路（支持 1v1 与 Multiplayer 多套演绎 Prompt 动态调度） [3]
+  // 新建大作战副本流程
   async function createNewGame(container, roche) {
     try {
       const userEl = document.getElementById("db-user-select");
@@ -748,10 +936,16 @@
         return;
       }
 
+      let displaySessionName = sessionNameInput;
+      if (!displaySessionName) {
+        displaySessionName = selectedCharIds.length > 1 ? "修罗场群像乱斗" : "浪漫恋爱约会";
+      }
+      displaySessionName = displaySessionName.substring(0, 15);
+
       const config = { 
         userId, 
-        charIds: selectedCharIds, // 更新为多选保存数组 [3]
-        sessionName: sessionNameInput, 
+        charIds: selectedCharIds, 
+        sessionName: displaySessionName, 
         worldType, 
         wordMin, 
         wordMax, 
@@ -789,23 +983,14 @@
           if (charItem) selectedCharacters.push(charItem);
         }
       } catch (e) {
-        console.warn("加载核心人物报错，尝试列表兜底", e);
+        console.warn("加载核心人物报错", e);
       }
 
       if (!userPersona || selectedCharacters.length === 0) {
         throw new Error("加载人设或角色数据失败，请确保宿主已预设角色和人设");
       }
 
-      // 提取所有选定角色的名字
       const charNames = selectedCharacters.map(c => c.handle || c.name || "角色").join("、");
-
-      // 自动补齐副本默认名称，限制在 15 字符内
-      let displaySessionName = sessionNameInput;
-      if (!displaySessionName) {
-        displaySessionName = selectedCharacters.length > 1 ? `与${selectedCharacters[0].handle || selectedCharacters[0].name}等人的乱斗` : `与${selectedCharacters[0].handle || selectedCharacters[0].name}的约会`;
-      }
-      displaySessionName = displaySessionName.substring(0, 15);
-      config.sessionName = displaySessionName;
 
       let worldbookText = "";
       if (selectedWbs.length > 0) {
@@ -823,11 +1008,9 @@
 
       const userName = userPersona.handle || userPersona.name || "玩家";
 
-      // 4. 核心调度：1v1 单人模式与多人修罗场模式的多套演绎 Prompt 分流控制 [3]
       let systemPrompt = "";
 
       if (selectedCharacters.length === 1) {
-        // == 1v1 单纯恋爱剧本 Prompt ==
         const character = selectedCharacters[0];
         const charName = character.handle || character.name;
         systemPrompt = `
@@ -863,7 +1046,6 @@ ${worldbookText ? `\n【引入参考世界书设定数据】\n${worldbookText}` 
 6. 保持绝对的角色沉浸，严禁跳戏，严禁提及你是AI或这只是程序。
 `;
       } else {
-        // == 多人多角修罗场群像 Prompt ==
         const charactersDetailsText = selectedCharacters.map((c, i) => `
 角色 ${i+1}: ${c.handle || c.name}
 身份定位: ${charBg || "攻略对象/参与者"}
@@ -898,7 +1080,7 @@ ${charactersDetailsText}
 由于有多位角色同时处于剧本中，你作为优秀的 GM，必须合理、艺术化地调度每一回合各角色的表现，杜绝僵硬感，严格遵循以下群像守则：
 1. **交替高光，杜绝单一垄断**：不能让其中某一个角色持续占领上风、霸占全部台词或完全主控全局。必须顺应剧情演化逻辑，交替给予不同角色亮眼展现、特写反应或细腻心理描写的空间。
 2. **克制出场，严禁雨露均沾**：在单回合的回复中，**严禁为了照顾所有人而强行让每个角色都站出来说一遍话或行动一遍**（严禁“拉出来溜一圈”）。每回合请仅调度当前场景细节、物理站位、以及情感纠葛上最合理、最符合逻辑的 **1-2 位角色** 进行实质性的高光发言、肢体互动或表态。其余未被挑中的角色则在一旁作为背景衬托，甚至暂时离开当前特写区域，维持修罗场张弛有度、错落有致的影视级观感。
-3. **演绎指向明确**：由于去除了外部聊天气泡名称，你在对白和叙叙述中必须通过文字细节（神态描写、在台词中融入特征词或明确写明人物A、人物B的名字）交代清楚是哪位角色正在动作和发言，防止玩家产生阅读疑惑。
+3. **演绎指向明确**：由于去除了外部聊天气泡名称，你在对白和叙述中必须通过文字细节（神态描写、在台词中融入特征词或明确写明人物A、人物B的名字）交代清楚是哪位角色正在动作和发言，防止玩家产生阅读疑惑。
 4. 你的每一回合回复文本长度（包含对白与描述）必须严格限制在 [${wordMin}] 字 到 [${wordMax}] 字 的区间内，不得太短，也不得超限。
 5. 绝不要替玩家（User）做出任何选择或擅自说出玩家的台词。
 6. 保持绝对的角色沉浸，严禁跳戏，严禁提及你是AI或这只是程序。
@@ -930,7 +1112,7 @@ ${charactersDetailsText}
         id: sessionId,
         name: displaySessionName,
         worldType,
-        characterName: charNames, // 外显多名组合
+        characterName: charNames, 
         userName,
         createdAt: Date.now()
       };
@@ -971,7 +1153,6 @@ ${charactersDetailsText}
         const users = await roche.persona.getUserPersonas() || [];
         userPersona = users.find(u => u.id === config.userId);
 
-        // 兼容处理老版本 1v1 的单选 charId 与新版本多选 charIds [3]
         const activeCharIds = config.charIds || (config.charId ? [config.charId] : []);
         for (const cid of activeCharIds) {
           let charItem = null;
@@ -1012,14 +1193,13 @@ ${charactersDetailsText}
 
       const userName = userPersona.handle || userPersona.name || "玩家";
 
-      // 4. 重建 Prompt 调度
       let systemPrompt = "";
 
       if (selectedCharacters.length === 1) {
         const character = selectedCharacters[0];
         const charName = character.handle || character.name;
         systemPrompt = `
-你是一个优秀的 TRPG 主持人（GM）兼角色扮演者。当前正在进行一场名为《约会大作战》的回合制文字恋爱冒险游戏。
+游约玩游戏，请在 1v1 情况下按照对应提示词运行。
 
 【世界设定】
 世界类型/画风: ${config.worldType}
@@ -1102,29 +1282,7 @@ ${charactersDetailsText}
     }
   }
 
-  // 删除特定副本
-  async function deleteSession(container, roche, sessionId) {
-    try {
-      let sessions = await roche.storage.get("date_battle_sessions") || [];
-      sessions = sessions.filter(s => s.id !== sessionId);
-      await roche.storage.set("date_battle_sessions", sessions);
-
-      await roche.storage.delete(`db_session_config_${sessionId}`);
-      await roche.storage.delete(`db_session_history_${sessionId}`);
-
-      const current = await roche.storage.get("date_battle_current_session_id");
-      if (current === sessionId) {
-        await roche.storage.delete("date_battle_current_session_id");
-      }
-
-      roche.ui.toast("副本已成功删除。");
-      await renderSessionList(container, roche);
-    } catch(e) {
-      roche.ui.toast("删除失败: " + e.message);
-    }
-  }
-
-  // 渲染配置表单 (攻略角色修改为了多选列表) [3]
+  // 渲染配置表单
   async function renderSetupForm(container, roche) {
     const setupDiv = document.getElementById("db-setup-view");
     showLoading("加载人设与设定数据...");
@@ -1161,9 +1319,7 @@ ${charactersDetailsText}
 
     const cachedConfig = await roche.storage.get("date_battle_last_config") || {};
 
-    // 拼装 Character 攻略角色多选列表 [3]
     const charListHtml = chars.map(c => {
-      // 兼容可能遗留的老配置单选 charId 或新配置数组 charIds
       const isChecked = (cachedConfig.charIds || []).includes(c.id) || (cachedConfig.charId === c.id) ? "checked" : "";
       return `
         <label class="worldbook-item">
@@ -1193,13 +1349,13 @@ ${charactersDetailsText}
 
           <div class="form-row">
             <div class="form-group">
-              <label> User 人设</label>
+              <label>选择你的 User 人设</label>
               <select id="db-user-select">
                 ${users.map(u => `<option value="${u.id}" ${cachedConfig.userId === u.id ? 'selected' : ''}>${escapeHtml(u.handle || u.name)}</option>`).join("")}
               </select>
             </div>
             <div class="form-group" style="display:flex; flex-direction:column;">
-              <label> Char </label>
+              <label>选择攻略的 Character 角色 (支持勾选多位触发多人模式)</label>
               <div class="worldbook-list" style="flex:1;">
                 ${charListHtml}
               </div>
@@ -1208,7 +1364,7 @@ ${charactersDetailsText}
 
           <div class="form-row">
             <div class="form-group">
-              <label>你的视角</label>
+              <label>User 人称 (你的视角)</label>
               <select id="db-user-pronoun">
                 <option value="first" ${cachedConfig.userPronoun === 'first' ? 'selected' : ''}>第一人称 (我)</option>
                 <option value="second" ${cachedConfig.userPronoun === 'second' || !cachedConfig.userPronoun ? 'selected' : ''}>第二人称 (你)</option>
@@ -1216,7 +1372,7 @@ ${charactersDetailsText}
               </select>
             </div>
             <div class="form-group">
-              <label>对方视角</label>
+              <label>Char 人称 (对方的视角)</label>
               <select id="db-char-pronoun">
                 <option value="first" ${cachedConfig.charPronoun === 'first' ? 'selected' : ''}>第一人称 (我)</option>
                 <option value="second" ${cachedConfig.charPronoun === 'second' ? 'selected' : ''}>第二人称 (你)</option>
@@ -1227,39 +1383,39 @@ ${charactersDetailsText}
 
           <div class="form-row">
             <div class="form-group">
-              <label>世界类型</label>
+              <label>世界类型与画风</label>
               <input type="text" id="db-world-type" placeholder="例如：赛博朋克、玄幻仙侠、现代校园恋爱" value="${escapeHtml(cachedConfig.worldType || '现代校园恋爱')}">
             </div>
             <div class="form-group" style="flex: 2; display: flex; gap: 8px;">
               <div style="flex: 1;">
-                <label>字数下限</label>
+                <label>单回合字数下限</label>
                 <input type="number" id="db-word-min" value="${cachedConfig.wordMin || 150}" min="30" max="1000">
               </div>
               <div style="flex: 1;">
-                <label>字数上限</label>
+                <label>单回合字数上限</label>
                 <input type="number" id="db-word-max" value="${cachedConfig.wordMax || 350}" min="50" max="2000">
               </div>
             </div>
           </div>
 
           <div class="form-group">
-            <label>世界背景简介 </label>
+            <label>世界背景简介 (初始情境描述)</label>
             <textarea id="db-world-intro" placeholder="例如：我们在放学后的夕阳教室里...">${escapeHtml(cachedConfig.worldIntro || '')}</textarea>
           </div>
 
           <div class="form-row">
             <div class="form-group">
-              <label>你的身份</label>
+              <label>你的身份背景与设定 (User)</label>
               <textarea id="db-user-bg" placeholder="在这个世界中，你的身份以及和对方的关系是什么？">${escapeHtml(cachedConfig.userBg || '')}</textarea>
             </div>
             <div class="form-group">
-              <label>对方的身份</label>
+              <label>对方的身份背景与设定 (Char)</label>
               <textarea id="db-char-bg" placeholder="在这个世界中，对方扮演什么角色？">${escapeHtml(cachedConfig.charBg || '')}</textarea>
             </div>
           </div>
 
           <div class="form-group">
-            <label>世界书</label>
+            <label>搭载宿主世界书 (可多选)</label>
             <div class="worldbook-list">
               ${wbHtml}
             </div>
@@ -1267,7 +1423,7 @@ ${charactersDetailsText}
 
           <div class="btn-submit-container">
             <button class="db-btn db-btn-pri" id="db-start-btn" style="flex: 1;">
-              ${SVGS.plus} 开启约会副本
+              ${SVGS.plus} 开启大作战副本
             </button>
           </div>
         </div>
