@@ -1193,13 +1193,13 @@ ${charactersDetailsText}
 
           <div class="form-row">
             <div class="form-group">
-              <label>选择你的 User 人设</label>
+              <label> User 人设</label>
               <select id="db-user-select">
                 ${users.map(u => `<option value="${u.id}" ${cachedConfig.userId === u.id ? 'selected' : ''}>${escapeHtml(u.handle || u.name)}</option>`).join("")}
               </select>
             </div>
             <div class="form-group" style="display:flex; flex-direction:column;">
-              <label>选择攻略的 Character 角色 (支持勾选多位触发多人模式)</label>
+              <label> Char </label>
               <div class="worldbook-list" style="flex:1;">
                 ${charListHtml}
               </div>
@@ -1208,7 +1208,7 @@ ${charactersDetailsText}
 
           <div class="form-row">
             <div class="form-group">
-              <label>User 人称 (你的视角)</label>
+              <label>你的视角</label>
               <select id="db-user-pronoun">
                 <option value="first" ${cachedConfig.userPronoun === 'first' ? 'selected' : ''}>第一人称 (我)</option>
                 <option value="second" ${cachedConfig.userPronoun === 'second' || !cachedConfig.userPronoun ? 'selected' : ''}>第二人称 (你)</option>
@@ -1216,7 +1216,7 @@ ${charactersDetailsText}
               </select>
             </div>
             <div class="form-group">
-              <label>Char 人称 (对方的视角)</label>
+              <label>对方视角</label>
               <select id="db-char-pronoun">
                 <option value="first" ${cachedConfig.charPronoun === 'first' ? 'selected' : ''}>第一人称 (我)</option>
                 <option value="second" ${cachedConfig.charPronoun === 'second' ? 'selected' : ''}>第二人称 (你)</option>
@@ -1227,39 +1227,39 @@ ${charactersDetailsText}
 
           <div class="form-row">
             <div class="form-group">
-              <label>世界类型与画风</label>
+              <label>世界类型</label>
               <input type="text" id="db-world-type" placeholder="例如：赛博朋克、玄幻仙侠、现代校园恋爱" value="${escapeHtml(cachedConfig.worldType || '现代校园恋爱')}">
             </div>
             <div class="form-group" style="flex: 2; display: flex; gap: 8px;">
               <div style="flex: 1;">
-                <label>单回合字数下限</label>
+                <label>字数下限</label>
                 <input type="number" id="db-word-min" value="${cachedConfig.wordMin || 150}" min="30" max="1000">
               </div>
               <div style="flex: 1;">
-                <label>单回合字数上限</label>
+                <label>字数上限</label>
                 <input type="number" id="db-word-max" value="${cachedConfig.wordMax || 350}" min="50" max="2000">
               </div>
             </div>
           </div>
 
           <div class="form-group">
-            <label>世界背景简介 (初始情境描述)</label>
+            <label>世界背景简介 </label>
             <textarea id="db-world-intro" placeholder="例如：我们在放学后的夕阳教室里...">${escapeHtml(cachedConfig.worldIntro || '')}</textarea>
           </div>
 
           <div class="form-row">
             <div class="form-group">
-              <label>你的身份背景与设定 (User)</label>
+              <label>你的身份</label>
               <textarea id="db-user-bg" placeholder="在这个世界中，你的身份以及和对方的关系是什么？">${escapeHtml(cachedConfig.userBg || '')}</textarea>
             </div>
             <div class="form-group">
-              <label>对方的身份背景与设定 (Char)</label>
+              <label>对方的身份</label>
               <textarea id="db-char-bg" placeholder="在这个世界中，对方扮演什么角色？">${escapeHtml(cachedConfig.charBg || '')}</textarea>
             </div>
           </div>
 
           <div class="form-group">
-            <label>搭载宿主世界书 (可多选)</label>
+            <label>世界书</label>
             <div class="worldbook-list">
               ${wbHtml}
             </div>
@@ -1267,7 +1267,7 @@ ${charactersDetailsText}
 
           <div class="btn-submit-container">
             <button class="db-btn db-btn-pri" id="db-start-btn" style="flex: 1;">
-              ${SVGS.plus} 开启大作战副本
+              ${SVGS.plus} 开启约会副本
             </button>
           </div>
         </div>
